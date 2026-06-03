@@ -16,7 +16,7 @@ settings:
 packages:
   Firebase:
     url: https://github.com/firebase/firebase-ios-sdk
-    exactVersion: 11.12.0
+    exactVersion: 12.14.0
 
 targets:
   MiiyaShop:
