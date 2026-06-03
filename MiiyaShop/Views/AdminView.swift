@@ -11,6 +11,10 @@ struct AdminView: View {
     @State private var showProductEditor = false
     @State private var editingProduct: Product?
     @State private var isSaving = false
+    @State private var showPasswordChange = false
+    @State private var newPassword = ""
+    @State private var confirmPassword = ""
+    @State private var passwordError = ""
 
     private let brownAccent = Color(red: 0.55, green: 0.38, blue: 0.22)
 
@@ -19,12 +23,24 @@ struct AdminView: View {
             List {
                 // Status section
                 Section("営業ステータス") {
-                    Picker("ステータス", selection: $selectedStatus) {
-                        ForEach(ShopStatus.allCases, id: \.self) { status in
-                            Text("\(status.emoji) \(status.label)").tag(status)
+                    ForEach(ShopStatus.allCases, id: \.self) { status in
+                        Button {
+                            selectedStatus = status
+                        } label: {
+                            HStack {
+                                Text("\(status.emoji) \(status.label)")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                if selectedStatus == status {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.green)
+                                        .font(.title3)
+                                }
+                            }
+                            .padding(.vertical, 4)
                         }
                     }
-                    .pickerStyle(.segmented)
 
                     TextField("お知らせメッセージ（任意）", text: $message, axis: .vertical)
                         .lineLimit(3)
@@ -94,6 +110,15 @@ struct AdminView: View {
                         }
                     }
                 }
+
+                // Settings section
+                Section("設定") {
+                    Button {
+                        showPasswordChange = true
+                    } label: {
+                        Label("パスワード変更", systemImage: "lock.rotation")
+                    }
+                }
             }
             .navigationTitle("管理画面")
             .navigationBarTitleDisplayMode(.inline)
@@ -110,6 +135,17 @@ struct AdminView: View {
                 ) {
                     Task { allProducts = await service.fetchAllProducts() }
                 }
+            }
+            .alert("パスワード変更", isPresented: $showPasswordChange) {
+                SecureField("新しいパスワード", text: $newPassword)
+                SecureField("もう一度入力", text: $confirmPassword)
+                Button("変更") { changePassword() }
+                Button("キャンセル", role: .cancel) {
+                    newPassword = ""
+                    confirmPassword = ""
+                }
+            } message: {
+                Text(passwordError.isEmpty ? "新しいパスワードを入力してください" : passwordError)
             }
             .task {
                 selectedStatus = service.shopInfo.status
@@ -134,6 +170,27 @@ struct AdminView: View {
                 await service.deleteProduct(product)
                 allProducts = await service.fetchAllProducts()
             }
+        }
+    }
+
+    private func changePassword() {
+        guard !newPassword.isEmpty else {
+            passwordError = "パスワードを入力してください"
+            showPasswordChange = true
+            return
+        }
+        guard newPassword == confirmPassword else {
+            passwordError = "パスワードが一致しません"
+            newPassword = ""
+            confirmPassword = ""
+            showPasswordChange = true
+            return
+        }
+        Task {
+            await service.updatePassword(newPassword)
+            newPassword = ""
+            confirmPassword = ""
+            passwordError = ""
         }
     }
 }
@@ -236,7 +293,6 @@ struct ProductEditorView: View {
         p.isVisible = isVisible
         if product == nil { p.order = nextOrder }
 
-        // Compress image
         var compressed: Data?
         if let imageData, let img = UIImage(data: imageData) {
             compressed = img.jpegData(compressionQuality: 0.7)

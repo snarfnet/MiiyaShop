@@ -19,13 +19,7 @@ struct CustomerView: View {
 
                 ScrollView {
                     VStack(spacing: 24) {
-                        // Mascot logo - switches based on status
                         mascotHeader
-
-                        // Status badge (only when NOT open, since open has the big image)
-                        if service.shopInfo.status != .open {
-                            statusBadge
-                        }
 
                         // Message
                         if !service.shopInfo.message.isEmpty {
@@ -66,7 +60,7 @@ struct CustomerView: View {
             mascotImage
                 .resizable()
                 .scaledToFit()
-                .frame(maxHeight: service.shopInfo.status == .preparing ? 160 : 320)
+                .frame(maxHeight: 320)
                 .clipShape(RoundedRectangle(cornerRadius: 20))
                 .shadow(color: mascotShadowColor.opacity(0.3), radius: 16, y: 4)
                 .onLongPressGesture(minimumDuration: 3.0) {
@@ -85,7 +79,6 @@ struct CustomerView: View {
         switch service.shopInfo.status {
         case .open: return Image("mascot_open")
         case .closed: return Image("mascot_closed")
-        case .preparing: return Image("mascot")
         }
     }
 
@@ -93,38 +86,6 @@ struct CustomerView: View {
         switch service.shopInfo.status {
         case .open: return .green
         case .closed: return .blue
-        case .preparing: return .orange
-        }
-    }
-
-    // MARK: - Status badge (for preparing/closed)
-    private var statusBadge: some View {
-        HStack(spacing: 12) {
-            Text(service.shopInfo.status.emoji)
-                .font(.system(size: 32))
-
-            Text(service.shopInfo.status.label)
-                .font(.system(size: 28, weight: .bold))
-                .foregroundColor(statusColor)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(.white)
-                .shadow(color: statusColor.opacity(0.2), radius: 8, y: 2)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(statusColor.opacity(0.4), lineWidth: 2)
-        )
-    }
-
-    private var statusColor: Color {
-        switch service.shopInfo.status {
-        case .open: return .green
-        case .preparing: return .orange
-        case .closed: return .gray
         }
     }
 

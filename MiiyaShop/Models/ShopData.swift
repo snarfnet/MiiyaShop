@@ -3,13 +3,11 @@ import FirebaseFirestore
 
 enum ShopStatus: String, CaseIterable {
     case open = "open"
-    case preparing = "preparing"
     case closed = "closed"
 
     var label: String {
         switch self {
         case .open: return "営業中"
-        case .preparing: return "準備中"
         case .closed: return "お休み"
         }
     }
@@ -17,7 +15,6 @@ enum ShopStatus: String, CaseIterable {
     var emoji: String {
         switch self {
         case .open: return "🟢"
-        case .preparing: return "🟡"
         case .closed: return "🔴"
         }
     }

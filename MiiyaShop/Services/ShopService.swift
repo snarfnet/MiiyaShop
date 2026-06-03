@@ -161,6 +161,12 @@ class ShopService: ObservableObject {
         }
     }
 
+    func updatePassword(_ newPassword: String) async {
+        try? await db.collection("config").document("admin").setData([
+            "password": newPassword
+        ], merge: true)
+    }
+
     func initializeIfNeeded() async {
         let doc = try? await db.collection("config").document("shopStatus").getDocument()
         if doc?.exists != true {
