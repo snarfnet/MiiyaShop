@@ -19,11 +19,13 @@ struct CustomerView: View {
 
                 ScrollView {
                     VStack(spacing: 24) {
-                        // Mascot logo (long press = admin)
+                        // Mascot logo - switches based on status
                         mascotHeader
 
-                        // Status badge
-                        statusSection
+                        // Status badge (only when NOT open, since open has the big image)
+                        if service.shopInfo.status != .open {
+                            statusBadge
+                        }
 
                         // Message
                         if !service.shopInfo.message.isEmpty {
@@ -58,14 +60,15 @@ struct CustomerView: View {
         }
     }
 
-    // MARK: - Mascot header (secret admin entry)
+    // MARK: - Mascot header (secret admin entry via 3s long press)
     private var mascotHeader: some View {
         VStack(spacing: 8) {
-            Image("mascot")
+            mascotImage
                 .resizable()
                 .scaledToFit()
-                .frame(height: 160)
+                .frame(maxHeight: service.shopInfo.status == .preparing ? 160 : 320)
                 .clipShape(RoundedRectangle(cornerRadius: 20))
+                .shadow(color: mascotShadowColor.opacity(0.3), radius: 16, y: 4)
                 .onLongPressGesture(minimumDuration: 3.0) {
                     showAdminLogin = true
                 }
@@ -75,10 +78,27 @@ struct CustomerView: View {
                 .foregroundColor(brownAccent)
         }
         .padding(.top, 8)
+        .animation(.easeInOut(duration: 0.4), value: service.shopInfo.status)
     }
 
-    // MARK: - Status
-    private var statusSection: some View {
+    private var mascotImage: Image {
+        switch service.shopInfo.status {
+        case .open: return Image("mascot_open")
+        case .closed: return Image("mascot_closed")
+        case .preparing: return Image("mascot")
+        }
+    }
+
+    private var mascotShadowColor: Color {
+        switch service.shopInfo.status {
+        case .open: return .green
+        case .closed: return .blue
+        case .preparing: return .orange
+        }
+    }
+
+    // MARK: - Status badge (for preparing/closed)
+    private var statusBadge: some View {
         HStack(spacing: 12) {
             Text(service.shopInfo.status.emoji)
                 .font(.system(size: 32))
@@ -135,7 +155,7 @@ struct CustomerView: View {
             HStack {
                 Image(systemName: "sparkles")
                     .foregroundColor(brownAccent)
-                Text("おすすめ商品")
+                Text("本日のおすすめ商品")
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(brownAccent)
             }

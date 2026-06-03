@@ -208,7 +208,7 @@ struct ProductEditorView: View {
                     .disabled(name.isEmpty || isSaving)
                 }
             }
-            .onChange(of: selectedPhoto) { _, newItem in
+            .onChange(of: selectedPhoto) { newItem in
                 Task {
                     if let data = try? await newItem?.loadTransferable(type: Data.self) {
                         imageData = data
