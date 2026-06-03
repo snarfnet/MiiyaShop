@@ -1,0 +1,60 @@
+name: MiiyaShop
+options:
+  bundleIdPrefix: com.tokyonasu
+  deploymentTarget:
+    iOS: "16.0"
+  xcodeVersion: "16.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: 1
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: 83VGKGSQUH
+
+packages:
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    exactVersion: 11.12.0
+
+targets:
+  MiiyaShop:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - MiiyaShop
+    dependencies:
+      - package: Firebase
+        product: FirebaseFirestore
+      - package: Firebase
+        product: FirebaseStorage
+    settings:
+      base:
+        PRODUCT_NAME: MiiyaShop
+        PRODUCT_BUNDLE_IDENTIFIER: com.tokyonasu.miiyaShop
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_FILE: MiiyaShop/Resources/Info.plist
+    info:
+      path: MiiyaShop/Resources/Info.plist
+      properties:
+        CFBundleDisplayName: "雑貨屋みぃ～屋"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        LSRequiresIPhoneOS: true
+        LSApplicationCategoryType: public.app-category.shopping
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen:
+          UIColorName: ""
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIUserInterfaceStyle: Light
+        NSPhotoLibraryUsageDescription: "商品画像を選択するために写真ライブラリへのアクセスが必要です。"
+        NSCameraUsageDescription: "商品画像を撮影するためにカメラへのアクセスが必要です。"
