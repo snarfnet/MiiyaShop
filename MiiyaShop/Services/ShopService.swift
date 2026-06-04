@@ -1,6 +1,5 @@
 import Foundation
 import FirebaseFirestore
-import FirebaseStorage
 import SwiftUI
 
 @MainActor
@@ -10,11 +9,9 @@ class ShopService: ObservableObject {
     @Published var isLoading = true
 
     private let db = Firestore.firestore()
-    private let storage = Storage.storage()
     private var statusListener: ListenerRegistration?
     private var productsListener: ListenerRegistration?
 
-    static let adminPasswordKey = "miiya_admin_pw"
     static let defaultPassword = "miiya2026"
 
     init() {
@@ -55,7 +52,7 @@ class ShopService: ObservableObject {
                         name: d["name"] as? String ?? "",
                         price: d["price"] as? Int ?? 0,
                         description: d["description"] as? String ?? "",
-                        imageURL: d["imageURL"] as? String ?? "",
+                        imageBase64: d["imageBase64"] as? String ?? "",
                         order: d["order"] as? Int ?? 0,
                         isVisible: d["isVisible"] as? Bool ?? true
                     )
@@ -89,7 +86,7 @@ class ShopService: ObservableObject {
                     name: d["name"] as? String ?? "",
                     price: d["price"] as? Int ?? 0,
                     description: d["description"] as? String ?? "",
-                    imageURL: d["imageURL"] as? String ?? "",
+                    imageBase64: d["imageBase64"] as? String ?? "",
                     order: d["order"] as? Int ?? 0,
                     isVisible: d["isVisible"] as? Bool ?? true
                 )
@@ -105,14 +102,14 @@ class ShopService: ObservableObject {
                 "name": product.name,
                 "price": product.price,
                 "description": product.description,
-                "imageURL": product.imageURL,
                 "order": product.order,
                 "isVisible": product.isVisible
             ]
 
             if let imageData {
-                let url = try await uploadImage(imageData, productId: product.id.isEmpty ? UUID().uuidString : product.id)
-                data["imageURL"] = url
+                data["imageBase64"] = imageData.base64EncodedString()
+            } else {
+                data["imageBase64"] = product.imageBase64
             }
 
             if product.id.isEmpty {
@@ -131,22 +128,9 @@ class ShopService: ObservableObject {
         guard !product.id.isEmpty else { return }
         do {
             try await db.collection("products").document(product.id).delete()
-            if !product.imageURL.isEmpty {
-                try? await storage.reference(forURL: product.imageURL).delete()
-            }
         } catch {
             print("Delete error: \(error)")
         }
-    }
-
-    // MARK: - Image upload
-
-    private func uploadImage(_ data: Data, productId: String) async throws -> String {
-        let ref = storage.reference().child("products/\(productId).jpg")
-        let metadata = StorageMetadata()
-        metadata.contentType = "image/jpeg"
-        _ = try await ref.putDataAsync(data, metadata: metadata)
-        return try await ref.downloadURL().absoluteString
     }
 
     // MARK: - Admin password

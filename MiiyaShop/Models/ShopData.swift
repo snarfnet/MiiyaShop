@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import FirebaseFirestore
 
 enum ShopStatus: String, CaseIterable {
@@ -31,11 +32,17 @@ struct Product: Identifiable {
     var name: String = ""
     var price: Int = 0
     var description: String = ""
-    var imageURL: String = ""
+    var imageBase64: String = ""
     var order: Int = 0
     var isVisible: Bool = true
 
     var priceText: String {
         "¥\(price.formatted())"
+    }
+
+    var uiImage: UIImage? {
+        guard !imageBase64.isEmpty,
+              let data = Data(base64Encoded: imageBase64) else { return nil }
+        return UIImage(data: data)
     }
 }

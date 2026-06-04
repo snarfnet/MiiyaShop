@@ -28,8 +28,6 @@ targets:
     dependencies:
       - package: Firebase
         product: FirebaseFirestore
-      - package: Firebase
-        product: FirebaseStorage
     settings:
       base:
         PRODUCT_NAME: MiiyaShop

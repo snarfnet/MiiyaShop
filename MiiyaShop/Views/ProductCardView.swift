@@ -6,21 +6,15 @@ struct ProductCardView: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            // Product image
-            AsyncImage(url: URL(string: product.imageURL)) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 90, height: 90)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                case .failure:
-                    imagePlaceholder
-                default:
-                    ProgressView()
-                        .frame(width: 90, height: 90)
-                }
+            // Product image from base64
+            if let img = product.uiImage {
+                Image(uiImage: img)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 90, height: 90)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            } else {
+                imagePlaceholder
             }
 
             VStack(alignment: .leading, spacing: 6) {

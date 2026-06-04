@@ -70,14 +70,11 @@ struct AdminView: View {
                             showProductEditor = true
                         } label: {
                             HStack {
-                                if !product.imageURL.isEmpty {
-                                    AsyncImage(url: URL(string: product.imageURL)) { image in
-                                        image.resizable().scaledToFill()
-                                    } placeholder: {
-                                        Color.gray.opacity(0.2)
-                                    }
-                                    .frame(width: 44, height: 44)
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                if let img = product.uiImage {
+                                    Image(uiImage: img)
+                                        .resizable().scaledToFill()
+                                        .frame(width: 44, height: 44)
+                                        .clipShape(RoundedRectangle(cornerRadius: 6))
                                 }
                                 VStack(alignment: .leading) {
                                     Text(product.name)
@@ -231,14 +228,12 @@ struct ProductEditorView: View {
                             .scaledToFit()
                             .frame(maxHeight: 200)
                             .clipShape(RoundedRectangle(cornerRadius: 10))
-                    } else if let url = product?.imageURL, !url.isEmpty {
-                        AsyncImage(url: URL(string: url)) { image in
-                            image.resizable().scaledToFit()
-                        } placeholder: {
-                            ProgressView()
-                        }
-                        .frame(maxHeight: 200)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    } else if let img = product?.uiImage {
+                        Image(uiImage: img)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxHeight: 200)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
 
                     PhotosPicker(selection: $selectedPhoto, matching: .images) {
