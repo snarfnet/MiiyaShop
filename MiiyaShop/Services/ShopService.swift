@@ -6,22 +6,26 @@ import SwiftUI
 class ShopService: ObservableObject {
     @Published var shopInfo = ShopInfo()
     @Published var products: [Product] = []
+    @Published var businessDays: [String: BusinessDayStatus] = [:]
     @Published var isLoading = true
 
     private let db = Firestore.firestore()
     private var statusListener: ListenerRegistration?
     private var productsListener: ListenerRegistration?
+    private var calendarListener: ListenerRegistration?
 
     static let defaultPassword = "miiya2026"
 
     init() {
         listenToStatus()
         listenToProducts()
+        listenToCalendar()
     }
 
     deinit {
         statusListener?.remove()
         productsListener?.remove()
+        calendarListener?.remove()
     }
 
     // MARK: - Listeners (real-time updates)
@@ -60,6 +64,19 @@ class ShopService: ObservableObject {
             }
     }
 
+    private func listenToCalendar() {
+        calendarListener = db.collection("config").document("businessCalendar")
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self else { return }
+                let rawDays = snapshot?.data()?["days"] as? [String: String] ?? [:]
+                self.businessDays = rawDays.reduce(into: [:]) { result, item in
+                    if let status = BusinessDayStatus(rawValue: item.value) {
+                        result[item.key] = status
+                    }
+                }
+            }
+    }
+
     // MARK: - Admin: Status
 
     func updateStatus(_ status: ShopStatus, message: String) async {
@@ -71,6 +88,28 @@ class ShopService: ObservableObject {
             ])
         } catch {
             print("Status update error: \(error)")
+        }
+    }
+
+    // MARK: - Admin: Business calendar
+
+    func status(for date: Date) -> BusinessDayStatus? {
+        businessDays[BusinessCalendarKey.key(for: date)]
+    }
+
+    func updateBusinessDay(_ date: Date, status: BusinessDayStatus?) async {
+        let key = BusinessCalendarKey.key(for: date)
+        var updatedDays = businessDays
+        updatedDays[key] = status
+        let rawDays = updatedDays.mapValues(\.rawValue)
+
+        do {
+            try await db.collection("config").document("businessCalendar").setData([
+                "days": rawDays,
+                "updatedAt": FieldValue.serverTimestamp()
+            ], merge: true)
+        } catch {
+            print("Calendar update error: \(error)")
         }
     }
 
@@ -164,6 +203,13 @@ class ShopService: ObservableObject {
         if adminDoc?.exists != true {
             try? await db.collection("config").document("admin").setData([
                 "password": ShopService.defaultPassword
+            ])
+        }
+        let calendarDoc = try? await db.collection("config").document("businessCalendar").getDocument()
+        if calendarDoc?.exists != true {
+            try? await db.collection("config").document("businessCalendar").setData([
+                "days": [String: String](),
+                "updatedAt": FieldValue.serverTimestamp()
             ])
         }
     }

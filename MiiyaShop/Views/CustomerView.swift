@@ -26,6 +26,8 @@ struct CustomerView: View {
                             messageSection
                         }
 
+                        businessCalendarSection
+
                         // Products
                         if !service.products.isEmpty {
                             productsSection
@@ -108,6 +110,21 @@ struct CustomerView: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(leafGreen.opacity(0.2), lineWidth: 1)
         )
+    }
+
+    // MARK: - Business calendar
+    private var businessCalendarSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "calendar")
+                    .foregroundColor(brownAccent)
+                Text("営業カレンダー")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(brownAccent)
+            }
+
+            BusinessCalendarView(days: service.businessDays)
+        }
     }
 
     // MARK: - Products

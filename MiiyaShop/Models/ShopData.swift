@@ -27,6 +27,39 @@ struct ShopInfo {
     var updatedAt: Date = Date()
 }
 
+enum BusinessDayStatus: String, CaseIterable {
+    case open = "open"
+    case closed = "closed"
+
+    var symbol: String {
+        switch self {
+        case .open: return "〇"
+        case .closed: return "✖"
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .open: return "営業"
+        case .closed: return "休み"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .open: return Color(red: 0.22, green: 0.58, blue: 0.32)
+        case .closed: return Color(red: 0.82, green: 0.18, blue: 0.22)
+        }
+    }
+}
+
+enum BusinessCalendarKey {
+    static func key(for date: Date) -> String {
+        let components = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", components.year ?? 0, components.month ?? 0, components.day ?? 0)
+    }
+}
+
 struct Product: Identifiable {
     var id: String = ""
     var name: String = ""

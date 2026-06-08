@@ -62,6 +62,18 @@ struct AdminView: View {
                     .disabled(isSaving)
                 }
 
+                Section("営業カレンダー") {
+                    BusinessCalendarView(
+                        days: service.businessDays,
+                        isEditable: true,
+                        onTapDate: toggleBusinessDay
+                    )
+
+                    Text("日付をタップすると、未設定、〇、✖の順に切り替わります。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
                 // Products section
                 Section("おすすめ商品") {
                     ForEach(allProducts) { product in
@@ -157,6 +169,22 @@ struct AdminView: View {
         Task {
             await service.updateStatus(selectedStatus, message: message)
             isSaving = false
+        }
+    }
+
+    private func toggleBusinessDay(_ date: Date) {
+        let nextStatus: BusinessDayStatus?
+        switch service.status(for: date) {
+        case .none:
+            nextStatus = .open
+        case .some(.open):
+            nextStatus = .closed
+        case .some(.closed):
+            nextStatus = nil
+        }
+
+        Task {
+            await service.updateBusinessDay(date, status: nextStatus)
         }
     }
 
