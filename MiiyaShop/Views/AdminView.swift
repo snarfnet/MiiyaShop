@@ -29,6 +29,13 @@ struct AdminView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("表示設定") {
+                    featureToggle("一斉お知らせ", systemImage: "bell.badge", keyPath: \.showAnnouncements)
+                    featureToggle("来店スタンプカード", systemImage: "seal", keyPath: \.showStampCard)
+                    featureToggle("買い物メモ", systemImage: "checklist", keyPath: \.showShoppingMemo)
+                    featureToggle("営業カレンダー", systemImage: "calendar", keyPath: \.showBusinessCalendar)
+                }
+
                 // Status section
                 Section("営業ステータス") {
                     ForEach(ShopStatus.allCases, id: \.self) { status in
@@ -323,6 +330,27 @@ struct AdminView: View {
         }
     }
 
+    private func featureToggle(
+        _ title: String,
+        systemImage: String,
+        keyPath: WritableKeyPath<FeatureVisibility, Bool>
+    ) -> some View {
+        Toggle(isOn: Binding(
+            get: {
+                service.featureVisibility[keyPath: keyPath]
+            },
+            set: { value in
+                var updated = service.featureVisibility
+                updated[keyPath: keyPath] = value
+                Task {
+                    await service.updateFeatureVisibility(updated)
+                }
+            }
+        )) {
+            Label(title, systemImage: systemImage)
+        }
+    }
+
     private func toggleBusinessDay(_ date: Date) {
         let nextStatus: BusinessDayStatus?
         switch service.status(for: date) {
@@ -398,10 +426,16 @@ struct AdminView: View {
             return
         }
         Task {
-            await service.updatePassword(newPassword)
-            newPassword = ""
-            confirmPassword = ""
-            passwordError = ""
+            let updated = await service.updatePassword(newPassword)
+            if updated {
+                AdminPasswordCache.save(newPassword)
+                newPassword = ""
+                confirmPassword = ""
+                passwordError = ""
+            } else {
+                passwordError = "変更できませんでした"
+                showPasswordChange = true
+            }
         }
     }
 }

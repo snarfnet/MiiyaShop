@@ -11,6 +11,7 @@ class ShopService: ObservableObject {
     @Published var contactMessages: [ContactMessage] = []
     @Published var announcements: [ShopAnnouncement] = []
     @Published var stampConfig = StampConfig()
+    @Published var featureVisibility = FeatureVisibility()
     @Published var isLoading = true
 
     private let db = Firestore.firestore()
@@ -20,6 +21,7 @@ class ShopService: ObservableObject {
     private var contactMessagesListener: ListenerRegistration?
     private var announcementsListener: ListenerRegistration?
     private var stampConfigListener: ListenerRegistration?
+    private var featureVisibilityListener: ListenerRegistration?
     private var knownContactMessageIds = Set<String>()
     private var knownAnnouncementIds = Set<String>()
     private var didLoadContactMessages = false
@@ -36,6 +38,7 @@ class ShopService: ObservableObject {
         listenToContactMessages()
         listenToAnnouncements()
         listenToStampConfig()
+        listenToFeatureVisibility()
     }
 
     deinit {
@@ -45,6 +48,7 @@ class ShopService: ObservableObject {
         contactMessagesListener?.remove()
         announcementsListener?.remove()
         stampConfigListener?.remove()
+        featureVisibilityListener?.remove()
     }
 
     // MARK: - Listeners (real-time updates)
@@ -161,6 +165,20 @@ class ShopService: ObservableObject {
                     code: data["code"] as? String ?? "MIIYA",
                     rewardText: data["rewardText"] as? String ?? "5スタンプで100円引きクーポン",
                     updatedAt: (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
+                )
+            }
+    }
+
+    private func listenToFeatureVisibility() {
+        featureVisibilityListener = db.collection("config").document("featureVisibility")
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self else { return }
+                let data = snapshot?.data() ?? [:]
+                self.featureVisibility = FeatureVisibility(
+                    showAnnouncements: data["showAnnouncements"] as? Bool ?? true,
+                    showStampCard: data["showStampCard"] as? Bool ?? true,
+                    showShoppingMemo: data["showShoppingMemo"] as? Bool ?? true,
+                    showBusinessCalendar: data["showBusinessCalendar"] as? Bool ?? true
                 )
             }
     }
@@ -297,6 +315,24 @@ class ShopService: ObservableObject {
         input.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() == stampConfig.code.uppercased()
     }
 
+    // MARK: - Feature visibility
+
+    func updateFeatureVisibility(_ visibility: FeatureVisibility) async -> Bool {
+        do {
+            try await db.collection("config").document("featureVisibility").setData([
+                "showAnnouncements": visibility.showAnnouncements,
+                "showStampCard": visibility.showStampCard,
+                "showShoppingMemo": visibility.showShoppingMemo,
+                "showBusinessCalendar": visibility.showBusinessCalendar,
+                "updatedAt": FieldValue.serverTimestamp()
+            ], merge: true)
+            return true
+        } catch {
+            print("Feature visibility update error: \(error)")
+            return false
+        }
+    }
+
     func enableContactMessageNotifications() async {
         do {
             shouldNotifyContactMessages = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
@@ -414,10 +450,16 @@ class ShopService: ObservableObject {
         }
     }
 
-    func updatePassword(_ newPassword: String) async {
-        try? await db.collection("config").document("admin").setData([
-            "password": newPassword
-        ], merge: true)
+    func updatePassword(_ newPassword: String) async -> Bool {
+        do {
+            try await db.collection("config").document("admin").setData([
+                "password": newPassword
+            ], merge: true)
+            return true
+        } catch {
+            print("Password update error: \(error)")
+            return false
+        }
     }
 
     func initializeIfNeeded() async {
@@ -447,6 +489,16 @@ class ShopService: ObservableObject {
             try? await db.collection("config").document("stampCard").setData([
                 "code": "MIIYA",
                 "rewardText": "5スタンプで100円引きクーポン",
+                "updatedAt": FieldValue.serverTimestamp()
+            ])
+        }
+        let visibilityDoc = try? await db.collection("config").document("featureVisibility").getDocument()
+        if visibilityDoc?.exists != true {
+            try? await db.collection("config").document("featureVisibility").setData([
+                "showAnnouncements": true,
+                "showStampCard": true,
+                "showShoppingMemo": true,
+                "showBusinessCalendar": true,
                 "updatedAt": FieldValue.serverTimestamp()
             ])
         }

@@ -4,11 +4,13 @@ import FirebaseFirestore
 
 enum ShopStatus: String, CaseIterable {
     case open = "open"
+    case breakTime = "break"
     case closed = "closed"
 
     var label: String {
         switch self {
         case .open: return "営業中"
+        case .breakTime: return "休憩中"
         case .closed: return "お休み"
         }
     }
@@ -16,6 +18,7 @@ enum ShopStatus: String, CaseIterable {
     var emoji: String {
         switch self {
         case .open: return "🟢"
+        case .breakTime: return "🟡"
         case .closed: return "🔴"
         }
     }
@@ -102,6 +105,13 @@ struct ShopAnnouncement: Identifiable {
     var title: String = ""
     var body: String = ""
     var createdAt: Date = Date()
+}
+
+struct FeatureVisibility {
+    var showAnnouncements: Bool = true
+    var showStampCard: Bool = true
+    var showShoppingMemo: Bool = true
+    var showBusinessCalendar: Bool = true
 }
 
 struct StampConfig {

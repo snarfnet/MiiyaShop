@@ -36,15 +36,21 @@ struct CustomerView: View {
                             messageSection
                         }
 
-                        if !service.announcements.isEmpty {
+                        if service.featureVisibility.showAnnouncements && !service.announcements.isEmpty {
                             announcementsSection
                         }
 
-                        stampCardSection
+                        if service.featureVisibility.showStampCard {
+                            stampCardSection
+                        }
 
-                        businessCalendarSection
+                        if service.featureVisibility.showBusinessCalendar {
+                            businessCalendarSection
+                        }
 
-                        shoppingMemoSection
+                        if service.featureVisibility.showShoppingMemo {
+                            shoppingMemoSection
+                        }
 
                         contactSection
 
@@ -95,7 +101,7 @@ struct CustomerView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 20))
                 .shadow(color: mascotShadowColor.opacity(0.3), radius: 16, y: 4)
                 .onLongPressGesture(minimumDuration: 3.0) {
-                    showAdminLogin = true
+                    openAdminLogin()
                 }
 
             Text("雑貨屋みぃ～屋")
@@ -109,6 +115,7 @@ struct CustomerView: View {
     private var mascotImage: Image {
         switch service.shopInfo.status {
         case .open: return Image("mascot_open")
+        case .breakTime: return Image("mascot_break")
         case .closed: return Image("mascot_closed")
         }
     }
@@ -116,6 +123,7 @@ struct CustomerView: View {
     private var mascotShadowColor: Color {
         switch service.shopInfo.status {
         case .open: return .green
+        case .breakTime: return .yellow
         case .closed: return .blue
         }
     }
@@ -269,9 +277,11 @@ struct CustomerView: View {
             }
 
             ForEach(service.products) { product in
-                ProductCardView(product: product, accentColor: brownAccent) {
-                    addProductToMemo(product)
-                }
+                ProductCardView(
+                    product: product,
+                    accentColor: brownAccent,
+                    onAddToMemo: memoAction(for: product)
+                )
             }
         }
     }
@@ -401,14 +411,25 @@ struct CustomerView: View {
     }
 
     // MARK: - Admin login
+    private func openAdminLogin() {
+        if let cachedPassword = AdminPasswordCache.load() {
+            adminPassword = cachedPassword
+            loginAdmin()
+        } else {
+            showAdminLogin = true
+        }
+    }
+
     private func loginAdmin() {
         Task {
             let ok = await service.checkPassword(adminPassword)
             if ok {
+                AdminPasswordCache.save(adminPassword)
                 adminPassword = ""
                 wrongPassword = false
                 showAdmin = true
             } else {
+                AdminPasswordCache.delete()
                 wrongPassword = true
                 adminPassword = ""
                 showAdminLogin = true
@@ -429,6 +450,13 @@ struct CustomerView: View {
             ShoppingMemoItem(title: product.name, note: product.priceText),
             at: 0
         )
+    }
+
+    private func memoAction(for product: Product) -> (() -> Void)? {
+        guard service.featureVisibility.showShoppingMemo else { return nil }
+        return {
+            addProductToMemo(product)
+        }
     }
 
     private func removeMemoItem(_ item: ShoppingMemoItem) {
