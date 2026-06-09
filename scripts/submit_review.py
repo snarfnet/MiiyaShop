@@ -11,6 +11,8 @@ ISSUER_ID = os.environ.get("ASC_ISSUER_ID", "2be0734f-943a-4d61-9dc9-5d9045c46fe
 BUNDLE_ID = os.environ.get("APP_BUNDLE_ID", "com.tokyonasu.miiyaShop")
 APP_VERSION = os.environ.get("APP_VERSION", "1.0")
 P8_PATH = os.environ.get("ASC_P8_PATH", "/tmp/asc_key.p8")
+EXPECTED_BUILD_NUMBER = os.environ.get("EXPECTED_BUILD_NUMBER", "").strip()
+FORCE_RESUBMIT = os.environ.get("FORCE_RESUBMIT", "").lower() in ("1", "true", "yes")
 
 REVIEW_NOTES = """Admin panel password: miiya2026
 
@@ -114,7 +116,10 @@ def find_version(app_id):
 
 
 def wait_for_latest_valid_build(app_id):
-    print("Waiting for latest valid processed build...")
+    if EXPECTED_BUILD_NUMBER:
+        print(f"Waiting for valid processed build {EXPECTED_BUILD_NUMBER}...")
+    else:
+        print("Waiting for latest valid processed build...")
     for attempt in range(90):
         response, body = api_json(
             "GET",
@@ -122,6 +127,11 @@ def wait_for_latest_valid_build(app_id):
         )
         if response.status_code == 200:
             builds = body.get("data", [])
+            if EXPECTED_BUILD_NUMBER:
+                builds = [
+                    build for build in builds
+                    if build.get("attributes", {}).get("version") == EXPECTED_BUILD_NUMBER
+                ]
             if builds:
                 build = builds[0]
                 attrs = build.get("attributes", {})
@@ -129,6 +139,8 @@ def wait_for_latest_valid_build(app_id):
                 return build["id"]
         print(f"  still processing... {attempt + 1}/90")
         time.sleep(30)
+    if EXPECTED_BUILD_NUMBER:
+        fail(f"Valid processed build {EXPECTED_BUILD_NUMBER} was not found.")
     fail("No valid processed build found.")
 
 
@@ -265,7 +277,7 @@ def submit_for_review(app_id, version_id):
 def main():
     app_id = find_app_id()
     version_id, state = find_version(app_id)
-    if state in ("WAITING_FOR_REVIEW", "IN_REVIEW"):
+    if state in ("WAITING_FOR_REVIEW", "IN_REVIEW") and not FORCE_RESUBMIT:
         print(f"Already submitted: {state}")
         return
 
