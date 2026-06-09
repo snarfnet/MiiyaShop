@@ -9,7 +9,7 @@ import requests
 KEY_ID = os.environ.get("ASC_KEY_ID", "WDXGY9WX55")
 ISSUER_ID = os.environ.get("ASC_ISSUER_ID", "2be0734f-943a-4d61-9dc9-5d9045c46fec")
 BUNDLE_ID = os.environ.get("APP_BUNDLE_ID", "com.tokyonasu.miiyaShop")
-APP_VERSION = os.environ.get("APP_VERSION", "1.0")
+APP_VERSION = os.environ.get("APP_VERSION", "1.1")
 P8_PATH = os.environ.get("ASC_P8_PATH", "/tmp/asc_key.p8")
 EXPECTED_BUILD_NUMBER = os.environ.get("EXPECTED_BUILD_NUMBER", "").strip()
 FORCE_RESUBMIT = os.environ.get("FORCE_RESUBMIT", "").lower() in ("1", "true", "yes")
