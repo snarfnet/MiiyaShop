@@ -66,16 +66,16 @@ def main():
 
     development = [
         certificate for certificate in certificates
-        if certificate.get("attributes", {}).get("certificateType") == "IOS_DEVELOPMENT"
+        if certificate.get("attributes", {}).get("certificateType") in ("IOS_DEVELOPMENT", "DEVELOPMENT")
     ]
     if not development:
-        print("No IOS_DEVELOPMENT certificates found.")
+        print("No development certificates found.")
         return
 
     development.sort(key=lambda item: item.get("attributes", {}).get("expirationDate") or "")
     target = development[0]
     response, body = api("DELETE", f"/certificates/{target['id']}")
-    print(f"Revoked oldest IOS_DEVELOPMENT certificate {target['id']}: {response.status_code}")
+    print(f"Revoked oldest development certificate {target['id']}: {response.status_code}")
     if response.status_code not in (200, 204):
         print(response.text[:1000])
         sys.exit(1)
