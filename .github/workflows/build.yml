@@ -55,8 +55,10 @@ jobs:
         ASC_P8_PATH: /tmp/asc_key.p8
         MODE: revoke_oldest_ios_development
       run: |
-        python3 -m pip install pyjwt cryptography requests
-        python3 scripts/apple_certificates.py
+        python3 -m venv .cert-venv
+        source .cert-venv/bin/activate
+        python -m pip install pyjwt cryptography requests
+        python scripts/apple_certificates.py
 
     - name: Build Archive
       run: |
