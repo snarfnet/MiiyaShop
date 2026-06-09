@@ -287,8 +287,12 @@ def submit_for_review(app_id, version_id):
         },
     )
     if response.status_code != 201:
-        fail(f"Review submission create failed {response.status_code}: {response.text[:1000]}")
-    submission_id = body["data"]["id"]
+        print(f"Review submission create failed {response.status_code}: {response.text[:1000]}")
+        submission_id = find_reusable_review_submission(app_id)
+        if not submission_id:
+            fail("Could not create or reuse a review submission.")
+    else:
+        submission_id = body["data"]["id"]
     print(f"Review submission: {submission_id}")
 
     added = False
@@ -323,6 +327,18 @@ def submit_for_review(app_id, version_id):
     if response.status_code != 200:
         fail(f"Review submit failed {response.status_code}: {response.text[:1000]}")
     print(f"Submitted for App Review. State: {body['data']['attributes'].get('state')}")
+
+
+def find_reusable_review_submission(app_id):
+    response, body = api_json("GET", f"/apps/{app_id}/reviewSubmissions?filter[state]=READY_FOR_REVIEW&limit=200")
+    if response.status_code != 200:
+        print(f"Could not list reusable review submissions: {response.status_code} {response.text[:500]}")
+        return None
+    for submission in body.get("data", []):
+        submission_id = submission["id"]
+        print(f"Reusing review submission {submission_id}")
+        return submission_id
+    return None
 
 
 def main():
