@@ -31,6 +31,10 @@ This build adds customer-facing features beyond store marketing:
 - Store announcements: the store owner can send announcements from the admin panel. Customers can see these announcements in the app and receive local notifications when the app is active with notification permission.
 - Shopping memo: customers can create a personal shopping memo and add recommended products to it."""
 
+WHATS_NEW = """管理画面から一斉お知らせ、来店スタンプカード、買い物メモ、営業カレンダーの表示を切り替えられるようにしました。
+営業ステータスに休憩中を追加しました。
+管理画面パスワードを端末に保存し、次回から入力を省略できるようにしました。"""
+
 REVIEW_CONTACT = {
     "contactFirstName": "Tokyo",
     "contactLastName": "Nasu",
@@ -230,6 +234,32 @@ def update_review_detail(version_id):
         fail(response.text[:1000])
 
 
+def update_whats_new(version_id):
+    localizations = list_all(f"/appStoreVersions/{version_id}/appStoreVersionLocalizations?limit=200")
+    if not localizations:
+        print("No app store version localizations found.")
+        return
+
+    for localization in localizations:
+        localization_id = localization["id"]
+        response = api(
+            "PATCH",
+            f"/appStoreVersionLocalizations/{localization_id}",
+            json={
+                "data": {
+                    "type": "appStoreVersionLocalizations",
+                    "id": localization_id,
+                    "attributes": {
+                        "whatsNew": WHATS_NEW
+                    },
+                }
+            },
+        )
+        print(f"Whats new update {localization_id}: {response.status_code}")
+        if response.status_code not in (200, 201):
+            fail(response.text[:1000])
+
+
 def assign_build(version_id, build_id):
     response = api(
         "PATCH",
@@ -350,6 +380,7 @@ def main():
 
     build_id = wait_for_latest_valid_build(app_id)
     update_review_detail(version_id)
+    update_whats_new(version_id)
     cancel_blocking_submissions(app_id)
     assign_build(version_id, build_id)
     submit_for_review(app_id, version_id)
