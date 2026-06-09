@@ -307,6 +307,7 @@ def submit_for_review(app_id, version_id):
         if response.status_code == 201:
             added = True
             break
+        print(response.text[:1000])
         time.sleep(30)
     if not added:
         fail("Could not add app version to review submission.")
