@@ -13,6 +13,7 @@ APP_VERSION = os.environ.get("APP_VERSION", "1.0")
 P8_PATH = os.environ.get("ASC_P8_PATH", "/tmp/asc_key.p8")
 EXPECTED_BUILD_NUMBER = os.environ.get("EXPECTED_BUILD_NUMBER", "").strip()
 FORCE_RESUBMIT = os.environ.get("FORCE_RESUBMIT", "").lower() in ("1", "true", "yes")
+MAX_BUILD_WAIT_ATTEMPTS = int(os.environ.get("MAX_BUILD_WAIT_ATTEMPTS", "90"))
 
 REVIEW_NOTES = """Admin panel password: miiya2026
 
@@ -120,7 +121,7 @@ def wait_for_latest_valid_build(app_id):
         print(f"Waiting for valid processed build {EXPECTED_BUILD_NUMBER}...")
     else:
         print("Waiting for latest valid processed build...")
-    for attempt in range(90):
+    for attempt in range(MAX_BUILD_WAIT_ATTEMPTS):
         response, body = api_json(
             "GET",
             f"/builds?filter[app]={app_id}&filter[processingState]=VALID&sort=-uploadedDate&limit=10",
@@ -137,11 +138,29 @@ def wait_for_latest_valid_build(app_id):
                 attrs = build.get("attributes", {})
                 print(f"Build ready: id={build['id']} version={attrs.get('version')} uploaded={attrs.get('uploadedDate')}")
                 return build["id"]
-        print(f"  still processing... {attempt + 1}/90")
+        print(f"  still processing... {attempt + 1}/{MAX_BUILD_WAIT_ATTEMPTS}")
         time.sleep(30)
     if EXPECTED_BUILD_NUMBER:
+        print_recent_builds(app_id)
         fail(f"Valid processed build {EXPECTED_BUILD_NUMBER} was not found.")
+    print_recent_builds(app_id)
     fail("No valid processed build found.")
+
+
+def print_recent_builds(app_id):
+    response, body = api_json("GET", f"/builds?filter[app]={app_id}&sort=-uploadedDate&limit=20")
+    print("Recent builds:")
+    if response.status_code != 200:
+        print(f"Could not list builds: {response.status_code} {response.text[:500]}")
+        return
+    for build in body.get("data", []):
+        attrs = build.get("attributes", {})
+        print(
+            "  "
+            f"version={attrs.get('version')} "
+            f"processingState={attrs.get('processingState')} "
+            f"uploaded={attrs.get('uploadedDate')}"
+        )
 
 
 def update_review_detail(version_id):

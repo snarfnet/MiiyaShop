@@ -15,6 +15,11 @@ on:
         options:
           - "false"
           - "true"
+      max_build_wait_attempts:
+        description: "Build wait attempts, 30 seconds each"
+        required: false
+        default: "90"
+        type: string
 
 jobs:
   submit:
@@ -45,4 +50,5 @@ jobs:
           APP_VERSION: "1.0"
           EXPECTED_BUILD_NUMBER: ${{ inputs.expected_build_number }}
           FORCE_RESUBMIT: ${{ inputs.force_resubmit }}
+          MAX_BUILD_WAIT_ATTEMPTS: ${{ inputs.max_build_wait_attempts }}
         run: python scripts/submit_review.py
