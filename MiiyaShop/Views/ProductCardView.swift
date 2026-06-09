@@ -3,6 +3,7 @@ import SwiftUI
 struct ProductCardView: View {
     let product: Product
     let accentColor: Color
+    var onAddToMemo: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 14) {
@@ -33,6 +34,15 @@ struct ProductCardView: View {
                 Text(product.priceText)
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(accentColor)
+
+                if let onAddToMemo {
+                    Button(action: onAddToMemo) {
+                        Label("買い物メモに追加", systemImage: "checklist")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(accentColor)
+                }
             }
 
             Spacer()

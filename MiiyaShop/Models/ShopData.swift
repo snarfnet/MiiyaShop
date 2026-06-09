@@ -79,3 +79,27 @@ struct Product: Identifiable {
         return UIImage(data: data)
     }
 }
+
+struct ShoppingMemoItem: Identifiable, Codable, Equatable {
+    var id: UUID = UUID()
+    var title: String
+    var note: String = ""
+    var isDone: Bool = false
+    var createdAt: Date = Date()
+}
+
+struct ContactMessage: Identifiable {
+    var id: String = ""
+    var name: String = ""
+    var contact: String = ""
+    var message: String = ""
+    var isRead: Bool = false
+    var createdAt: Date = Date()
+}
+
+struct ShopAnnouncement: Identifiable {
+    var id: String = ""
+    var title: String = ""
+    var body: String = ""
+    var createdAt: Date = Date()
+}

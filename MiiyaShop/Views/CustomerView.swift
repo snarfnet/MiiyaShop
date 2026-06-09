@@ -6,6 +6,13 @@ struct CustomerView: View {
     @State private var showAdmin = false
     @State private var adminPassword = ""
     @State private var wrongPassword = false
+    @State private var shoppingMemoItems: [ShoppingMemoItem] = []
+    @State private var newMemoTitle = ""
+    @State private var contactName = ""
+    @State private var contactInfo = ""
+    @State private var contactMessage = ""
+    @State private var isSendingContact = false
+    @State private var contactResultMessage = ""
 
     // Colors matching the mascot
     private let bgColor = Color(red: 0.98, green: 0.96, blue: 0.92)
@@ -26,7 +33,15 @@ struct CustomerView: View {
                             messageSection
                         }
 
+                        if !service.announcements.isEmpty {
+                            announcementsSection
+                        }
+
                         businessCalendarSection
+
+                        shoppingMemoSection
+
+                        contactSection
 
                         // Products
                         if !service.products.isEmpty {
@@ -52,6 +67,11 @@ struct CustomerView: View {
             }
             .task {
                 await service.initializeIfNeeded()
+                await service.enableAnnouncementNotifications()
+            }
+            .onAppear(perform: loadShoppingMemo)
+            .onChange(of: shoppingMemoItems) { _ in
+                saveShoppingMemo()
             }
         }
     }
@@ -127,6 +147,32 @@ struct CustomerView: View {
         }
     }
 
+    // MARK: - Announcements
+    private var announcementsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "bell.fill")
+                    .foregroundColor(brownAccent)
+                Text("お店からのお知らせ")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(brownAccent)
+            }
+
+            ForEach(service.announcements.prefix(3)) { announcement in
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(announcement.title)
+                        .font(.body.weight(.bold))
+                    Text(announcement.body)
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .background(RoundedRectangle(cornerRadius: 12).fill(.white.opacity(0.75)))
+            }
+        }
+    }
+
     // MARK: - Products
     private var productsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -139,8 +185,134 @@ struct CustomerView: View {
             }
 
             ForEach(service.products) { product in
-                ProductCardView(product: product, accentColor: brownAccent)
+                ProductCardView(product: product, accentColor: brownAccent) {
+                    addProductToMemo(product)
+                }
             }
+        }
+    }
+
+    // MARK: - Shopping memo
+    private var shoppingMemoSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "checklist")
+                    .foregroundColor(brownAccent)
+                Text("買い物メモ")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(brownAccent)
+            }
+
+            HStack(spacing: 8) {
+                TextField("探したい雑貨やメモ", text: $newMemoTitle)
+                    .textFieldStyle(.roundedBorder)
+                    .submitLabel(.done)
+                    .onSubmit(addCustomMemo)
+
+                Button(action: addCustomMemo) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                }
+                .disabled(newMemoTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+
+            if shoppingMemoItems.isEmpty {
+                Text("気になる商品や探したいものをメモできます。")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(.white.opacity(0.65)))
+            } else {
+                VStack(spacing: 8) {
+                    ForEach($shoppingMemoItems) { $item in
+                        HStack(spacing: 10) {
+                            Button {
+                                item.isDone.toggle()
+                            } label: {
+                                Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
+                                    .foregroundColor(item.isDone ? leafGreen : .secondary)
+                                    .font(.title3)
+                            }
+                            .buttonStyle(.plain)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.title)
+                                    .font(.body.weight(.semibold))
+                                    .foregroundColor(item.isDone ? .secondary : .primary)
+                                    .strikethrough(item.isDone)
+                                if !item.note.isEmpty {
+                                    Text(item.note)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+
+                            Spacer()
+
+                            Button {
+                                removeMemoItem(item)
+                            } label: {
+                                Image(systemName: "trash")
+                                    .foregroundColor(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(12)
+                        .background(RoundedRectangle(cornerRadius: 12).fill(.white.opacity(0.75)))
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Contact
+    private var contactSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "bubble.left.and.bubble.right.fill")
+                    .foregroundColor(brownAccent)
+                Text("お店に質問する")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(brownAccent)
+            }
+
+            VStack(spacing: 10) {
+                TextField("お名前", text: $contactName)
+                    .textFieldStyle(.roundedBorder)
+                TextField("連絡先（任意）", text: $contactInfo)
+                    .textFieldStyle(.roundedBorder)
+                TextField("質問内容", text: $contactMessage, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(3...5)
+
+                Button {
+                    sendContactMessage()
+                } label: {
+                    HStack {
+                        Spacer()
+                        if isSendingContact {
+                            ProgressView()
+                        } else {
+                            Label("送信", systemImage: "paperplane.fill")
+                                .fontWeight(.semibold)
+                        }
+                        Spacer()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(leafGreen)
+                .disabled(isSendingContact || contactMessage.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                if !contactResultMessage.isEmpty {
+                    Text(contactResultMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: 12).fill(.white.opacity(0.75)))
         }
     }
 
@@ -156,6 +328,57 @@ struct CustomerView: View {
                 wrongPassword = true
                 adminPassword = ""
                 showAdminLogin = true
+            }
+        }
+    }
+
+    private func addCustomMemo() {
+        let title = newMemoTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return }
+        shoppingMemoItems.insert(ShoppingMemoItem(title: title), at: 0)
+        newMemoTitle = ""
+    }
+
+    private func addProductToMemo(_ product: Product) {
+        guard !shoppingMemoItems.contains(where: { $0.title == product.name }) else { return }
+        shoppingMemoItems.insert(
+            ShoppingMemoItem(title: product.name, note: product.priceText),
+            at: 0
+        )
+    }
+
+    private func removeMemoItem(_ item: ShoppingMemoItem) {
+        shoppingMemoItems.removeAll { $0.id == item.id }
+    }
+
+    private func loadShoppingMemo() {
+        guard let data = UserDefaults.standard.data(forKey: "shoppingMemoItems"),
+              let decoded = try? JSONDecoder().decode([ShoppingMemoItem].self, from: data) else { return }
+        shoppingMemoItems = decoded
+    }
+
+    private func saveShoppingMemo() {
+        guard let data = try? JSONEncoder().encode(shoppingMemoItems) else { return }
+        UserDefaults.standard.set(data, forKey: "shoppingMemoItems")
+    }
+
+    private func sendContactMessage() {
+        isSendingContact = true
+        contactResultMessage = ""
+        Task {
+            let ok = await service.sendContactMessage(
+                name: contactName,
+                contact: contactInfo,
+                message: contactMessage
+            )
+            isSendingContact = false
+            if ok {
+                contactName = ""
+                contactInfo = ""
+                contactMessage = ""
+                contactResultMessage = "送信しました。"
+            } else {
+                contactResultMessage = "送信できませんでした。時間をおいてもう一度お試しください。"
             }
         }
     }

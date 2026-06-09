@@ -19,7 +19,11 @@ How to access the admin panel:
 2. Press and hold the main mascot image for 3 seconds.
 3. Enter the password above.
 
-This build adds a customer-facing business calendar. Customers can check open and closed days in advance. The store owner can update each date from the admin panel by marking it as open (〇) or closed (✖)."""
+This build adds customer-facing features beyond store marketing:
+- Business calendar: customers can check open and closed days. The store owner can update each date from the admin panel by marking it as open (〇) or closed (✖).
+- Question form: customers can send questions to the store from the app. The store owner can read, mark, and delete received messages in the admin panel.
+- Store announcements: the store owner can send announcements from the admin panel. Customers can see these announcements in the app and receive local notifications when the app is active with notification permission.
+- Shopping memo: customers can create a personal shopping memo and add recommended products to it."""
 
 REVIEW_CONTACT = {
     "contactFirstName": "Tokyo",

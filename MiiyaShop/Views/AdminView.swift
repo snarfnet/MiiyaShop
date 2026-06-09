@@ -15,6 +15,10 @@ struct AdminView: View {
     @State private var newPassword = ""
     @State private var confirmPassword = ""
     @State private var passwordError = ""
+    @State private var announcementTitle = ""
+    @State private var announcementBody = ""
+    @State private var isSendingAnnouncement = false
+    @State private var announcementResult = ""
 
     private let brownAccent = Color(red: 0.55, green: 0.38, blue: 0.22)
 
@@ -72,6 +76,109 @@ struct AdminView: View {
                     Text("日付をタップすると、未設定、〇、✖の順に切り替わります。")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                }
+
+                Section("質問受信箱") {
+                    if service.contactMessages.isEmpty {
+                        Text("まだ質問は届いていません。")
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(service.contactMessages) { message in
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text(message.name)
+                                        .font(.body.weight(.bold))
+                                    Spacer()
+                                    Text(message.isRead ? "既読" : "未読")
+                                        .font(.caption2.weight(.bold))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 7)
+                                        .padding(.vertical, 3)
+                                        .background(message.isRead ? .gray : .orange)
+                                        .clipShape(Capsule())
+                                }
+
+                                if !message.contact.isEmpty {
+                                    Label(message.contact, systemImage: "person.crop.circle.badge.questionmark")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+
+                                Text(message.message)
+                                    .font(.body)
+
+                                Text(message.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+
+                                HStack {
+                                    Button(message.isRead ? "未読に戻す" : "既読にする") {
+                                        Task { await service.setContactMessageRead(message, isRead: !message.isRead) }
+                                    }
+                                    Spacer()
+                                    Button("削除", role: .destructive) {
+                                        Task { await service.deleteContactMessage(message) }
+                                    }
+                                }
+                                .font(.caption)
+                            }
+                            .padding(.vertical, 6)
+                        }
+                    }
+                }
+
+                Section("一斉お知らせ") {
+                    TextField("タイトル", text: $announcementTitle)
+                    TextField("本文", text: $announcementBody, axis: .vertical)
+                        .lineLimit(3)
+
+                    Button {
+                        sendAnnouncement()
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if isSendingAnnouncement {
+                                ProgressView()
+                            } else {
+                                Label("お知らせを送信", systemImage: "bell.badge")
+                                    .fontWeight(.semibold)
+                            }
+                            Spacer()
+                        }
+                    }
+                    .disabled(
+                        isSendingAnnouncement ||
+                        announcementTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                        announcementBody.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    )
+
+                    if !announcementResult.isEmpty {
+                        Text(announcementResult)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    if !service.announcements.isEmpty {
+                        ForEach(service.announcements.prefix(5)) { announcement in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(announcement.title)
+                                    .font(.body.weight(.bold))
+                                Text(announcement.body)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                HStack {
+                                    Text(announcement.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
+                                    Button("削除", role: .destructive) {
+                                        Task { await service.deleteAnnouncement(announcement) }
+                                    }
+                                    .font(.caption)
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // Products section
@@ -160,6 +267,7 @@ struct AdminView: View {
                 selectedStatus = service.shopInfo.status
                 message = service.shopInfo.message
                 allProducts = await service.fetchAllProducts()
+                await service.enableContactMessageNotifications()
             }
         }
     }
@@ -185,6 +293,22 @@ struct AdminView: View {
 
         Task {
             await service.updateBusinessDay(date, status: nextStatus)
+        }
+    }
+
+    private func sendAnnouncement() {
+        isSendingAnnouncement = true
+        announcementResult = ""
+        Task {
+            let ok = await service.sendAnnouncement(title: announcementTitle, body: announcementBody)
+            isSendingAnnouncement = false
+            if ok {
+                announcementTitle = ""
+                announcementBody = ""
+                announcementResult = "送信しました。"
+            } else {
+                announcementResult = "送信できませんでした。"
+            }
         }
     }
 

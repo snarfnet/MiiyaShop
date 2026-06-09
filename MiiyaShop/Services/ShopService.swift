@@ -1,18 +1,29 @@
 import Foundation
 import FirebaseFirestore
 import SwiftUI
+import UserNotifications
 
 @MainActor
 class ShopService: ObservableObject {
     @Published var shopInfo = ShopInfo()
     @Published var products: [Product] = []
     @Published var businessDays: [String: BusinessDayStatus] = [:]
+    @Published var contactMessages: [ContactMessage] = []
+    @Published var announcements: [ShopAnnouncement] = []
     @Published var isLoading = true
 
     private let db = Firestore.firestore()
     private var statusListener: ListenerRegistration?
     private var productsListener: ListenerRegistration?
     private var calendarListener: ListenerRegistration?
+    private var contactMessagesListener: ListenerRegistration?
+    private var announcementsListener: ListenerRegistration?
+    private var knownContactMessageIds = Set<String>()
+    private var knownAnnouncementIds = Set<String>()
+    private var didLoadContactMessages = false
+    private var didLoadAnnouncements = false
+    private var shouldNotifyContactMessages = false
+    private var shouldNotifyAnnouncements = false
 
     static let defaultPassword = "miiya2026"
 
@@ -20,12 +31,16 @@ class ShopService: ObservableObject {
         listenToStatus()
         listenToProducts()
         listenToCalendar()
+        listenToContactMessages()
+        listenToAnnouncements()
     }
 
     deinit {
         statusListener?.remove()
         productsListener?.remove()
         calendarListener?.remove()
+        contactMessagesListener?.remove()
+        announcementsListener?.remove()
     }
 
     // MARK: - Listeners (real-time updates)
@@ -77,6 +92,62 @@ class ShopService: ObservableObject {
             }
     }
 
+    private func listenToContactMessages() {
+        contactMessagesListener = db.collection("contactMessages")
+            .order(by: "createdAt", descending: true)
+            .limit(to: 50)
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self, let docs = snapshot?.documents else { return }
+                let incomingMessages = docs.map { doc in
+                    let data = doc.data()
+                    return ContactMessage(
+                        id: doc.documentID,
+                        name: data["name"] as? String ?? "",
+                        contact: data["contact"] as? String ?? "",
+                        message: data["message"] as? String ?? "",
+                        isRead: data["isRead"] as? Bool ?? false,
+                        createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+                    )
+                }
+                let incomingIds = Set(incomingMessages.map(\.id))
+                if self.didLoadContactMessages, self.shouldNotifyContactMessages {
+                    for message in incomingMessages where !message.isRead && !self.knownContactMessageIds.contains(message.id) {
+                        self.notifyNewContactMessage(message)
+                    }
+                }
+                self.knownContactMessageIds = incomingIds
+                self.didLoadContactMessages = true
+                self.contactMessages = incomingMessages
+            }
+    }
+
+    private func listenToAnnouncements() {
+        announcementsListener = db.collection("announcements")
+            .order(by: "createdAt", descending: true)
+            .limit(to: 20)
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self, let docs = snapshot?.documents else { return }
+                let incoming = docs.map { doc in
+                    let data = doc.data()
+                    return ShopAnnouncement(
+                        id: doc.documentID,
+                        title: data["title"] as? String ?? "",
+                        body: data["body"] as? String ?? "",
+                        createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+                    )
+                }
+                let incomingIds = Set(incoming.map(\.id))
+                if self.didLoadAnnouncements, self.shouldNotifyAnnouncements {
+                    for announcement in incoming where !self.knownAnnouncementIds.contains(announcement.id) {
+                        self.notifyAnnouncement(announcement)
+                    }
+                }
+                self.knownAnnouncementIds = incomingIds
+                self.didLoadAnnouncements = true
+                self.announcements = incoming
+            }
+    }
+
     // MARK: - Admin: Status
 
     func updateStatus(_ status: ShopStatus, message: String) async {
@@ -111,6 +182,124 @@ class ShopService: ObservableObject {
         } catch {
             print("Calendar update error: \(error)")
         }
+    }
+
+    // MARK: - Contact messages
+
+    func sendContactMessage(name: String, contact: String, message: String) async -> Bool {
+        let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanContact = contact.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanMessage.isEmpty else { return false }
+
+        do {
+            try await db.collection("contactMessages").addDocument(data: [
+                "name": cleanName.isEmpty ? "お客さま" : cleanName,
+                "contact": cleanContact,
+                "message": cleanMessage,
+                "isRead": false,
+                "createdAt": FieldValue.serverTimestamp()
+            ])
+            return true
+        } catch {
+            print("Contact message error: \(error)")
+            return false
+        }
+    }
+
+    func setContactMessageRead(_ message: ContactMessage, isRead: Bool) async {
+        guard !message.id.isEmpty else { return }
+        do {
+            try await db.collection("contactMessages").document(message.id).setData([
+                "isRead": isRead
+            ], merge: true)
+        } catch {
+            print("Contact read update error: \(error)")
+        }
+    }
+
+    func deleteContactMessage(_ message: ContactMessage) async {
+        guard !message.id.isEmpty else { return }
+        do {
+            try await db.collection("contactMessages").document(message.id).delete()
+        } catch {
+            print("Contact delete error: \(error)")
+        }
+    }
+
+    // MARK: - Announcements
+
+    func sendAnnouncement(title: String, body: String) async -> Bool {
+        let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanBody = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanTitle.isEmpty, !cleanBody.isEmpty else { return false }
+
+        do {
+            try await db.collection("announcements").addDocument(data: [
+                "title": cleanTitle,
+                "body": cleanBody,
+                "createdAt": FieldValue.serverTimestamp()
+            ])
+            return true
+        } catch {
+            print("Announcement send error: \(error)")
+            return false
+        }
+    }
+
+    func deleteAnnouncement(_ announcement: ShopAnnouncement) async {
+        guard !announcement.id.isEmpty else { return }
+        do {
+            try await db.collection("announcements").document(announcement.id).delete()
+        } catch {
+            print("Announcement delete error: \(error)")
+        }
+    }
+
+    func enableContactMessageNotifications() async {
+        do {
+            shouldNotifyContactMessages = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+        } catch {
+            shouldNotifyContactMessages = false
+            print("Notification permission error: \(error)")
+        }
+    }
+
+    func enableAnnouncementNotifications() async {
+        do {
+            shouldNotifyAnnouncements = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+        } catch {
+            shouldNotifyAnnouncements = false
+            print("Announcement notification permission error: \(error)")
+        }
+    }
+
+    private func notifyNewContactMessage(_ message: ContactMessage) {
+        let content = UNMutableNotificationContent()
+        content.title = "新しい質問が届きました"
+        content.body = "\(message.name): \(message.message)"
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: "contact-\(message.id)",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    private func notifyAnnouncement(_ announcement: ShopAnnouncement) {
+        let content = UNMutableNotificationContent()
+        content.title = announcement.title
+        content.body = announcement.body
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: "announcement-\(announcement.id)",
+            content: content,
+            trigger: nil
+        )
+        UNUserNotificationCenter.current().add(request)
     }
 
     // MARK: - Admin: Products
