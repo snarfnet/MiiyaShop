@@ -103,3 +103,34 @@ struct ShopAnnouncement: Identifiable {
     var body: String = ""
     var createdAt: Date = Date()
 }
+
+struct StampConfig {
+    var code: String = "MIIYA"
+    var rewardText: String = "5スタンプで100円引きクーポン"
+    var updatedAt: Date = Date()
+}
+
+struct StampCard: Codable, Equatable {
+    var stampedDateKeys: [String] = []
+    var redeemedCouponCount: Int = 0
+
+    var totalStamps: Int {
+        stampedDateKeys.count
+    }
+
+    var currentStamps: Int {
+        totalStamps % 5
+    }
+
+    var earnedCouponCount: Int {
+        totalStamps / 5
+    }
+
+    var availableCouponCount: Int {
+        max(0, earnedCouponCount - redeemedCouponCount)
+    }
+
+    func hasStamp(for date: Date) -> Bool {
+        stampedDateKeys.contains(BusinessCalendarKey.key(for: date))
+    }
+}

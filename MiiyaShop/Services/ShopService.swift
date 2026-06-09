@@ -10,6 +10,7 @@ class ShopService: ObservableObject {
     @Published var businessDays: [String: BusinessDayStatus] = [:]
     @Published var contactMessages: [ContactMessage] = []
     @Published var announcements: [ShopAnnouncement] = []
+    @Published var stampConfig = StampConfig()
     @Published var isLoading = true
 
     private let db = Firestore.firestore()
@@ -18,6 +19,7 @@ class ShopService: ObservableObject {
     private var calendarListener: ListenerRegistration?
     private var contactMessagesListener: ListenerRegistration?
     private var announcementsListener: ListenerRegistration?
+    private var stampConfigListener: ListenerRegistration?
     private var knownContactMessageIds = Set<String>()
     private var knownAnnouncementIds = Set<String>()
     private var didLoadContactMessages = false
@@ -33,6 +35,7 @@ class ShopService: ObservableObject {
         listenToCalendar()
         listenToContactMessages()
         listenToAnnouncements()
+        listenToStampConfig()
     }
 
     deinit {
@@ -41,6 +44,7 @@ class ShopService: ObservableObject {
         calendarListener?.remove()
         contactMessagesListener?.remove()
         announcementsListener?.remove()
+        stampConfigListener?.remove()
     }
 
     // MARK: - Listeners (real-time updates)
@@ -145,6 +149,19 @@ class ShopService: ObservableObject {
                 self.knownAnnouncementIds = incomingIds
                 self.didLoadAnnouncements = true
                 self.announcements = incoming
+            }
+    }
+
+    private func listenToStampConfig() {
+        stampConfigListener = db.collection("config").document("stampCard")
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self else { return }
+                let data = snapshot?.data() ?? [:]
+                self.stampConfig = StampConfig(
+                    code: data["code"] as? String ?? "MIIYA",
+                    rewardText: data["rewardText"] as? String ?? "5スタンプで100円引きクーポン",
+                    updatedAt: (data["updatedAt"] as? Timestamp)?.dateValue() ?? Date()
+                )
             }
     }
 
@@ -254,6 +271,30 @@ class ShopService: ObservableObject {
         } catch {
             print("Announcement delete error: \(error)")
         }
+    }
+
+    // MARK: - Stamp card
+
+    func updateStampConfig(code: String, rewardText: String) async -> Bool {
+        let cleanCode = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        let cleanReward = rewardText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanCode.isEmpty, !cleanReward.isEmpty else { return false }
+
+        do {
+            try await db.collection("config").document("stampCard").setData([
+                "code": cleanCode,
+                "rewardText": cleanReward,
+                "updatedAt": FieldValue.serverTimestamp()
+            ], merge: true)
+            return true
+        } catch {
+            print("Stamp config update error: \(error)")
+            return false
+        }
+    }
+
+    func isValidStampCode(_ input: String) -> Bool {
+        input.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() == stampConfig.code.uppercased()
     }
 
     func enableContactMessageNotifications() async {
@@ -398,6 +439,14 @@ class ShopService: ObservableObject {
         if calendarDoc?.exists != true {
             try? await db.collection("config").document("businessCalendar").setData([
                 "days": [String: String](),
+                "updatedAt": FieldValue.serverTimestamp()
+            ])
+        }
+        let stampDoc = try? await db.collection("config").document("stampCard").getDocument()
+        if stampDoc?.exists != true {
+            try? await db.collection("config").document("stampCard").setData([
+                "code": "MIIYA",
+                "rewardText": "5スタンプで100円引きクーポン",
                 "updatedAt": FieldValue.serverTimestamp()
             ])
         }

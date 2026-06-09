@@ -13,6 +13,9 @@ struct CustomerView: View {
     @State private var contactMessage = ""
     @State private var isSendingContact = false
     @State private var contactResultMessage = ""
+    @State private var stampCard = StampCard()
+    @State private var stampCodeInput = ""
+    @State private var stampResultMessage = ""
 
     // Colors matching the mascot
     private let bgColor = Color(red: 0.98, green: 0.96, blue: 0.92)
@@ -36,6 +39,8 @@ struct CustomerView: View {
                         if !service.announcements.isEmpty {
                             announcementsSection
                         }
+
+                        stampCardSection
 
                         businessCalendarSection
 
@@ -72,6 +77,10 @@ struct CustomerView: View {
             .onAppear(perform: loadShoppingMemo)
             .onChange(of: shoppingMemoItems) { _ in
                 saveShoppingMemo()
+            }
+            .onAppear(perform: loadStampCard)
+            .onChange(of: stampCard) { _ in
+                saveStampCard()
             }
         }
     }
@@ -170,6 +179,81 @@ struct CustomerView: View {
                 .padding(14)
                 .background(RoundedRectangle(cornerRadius: 12).fill(.white.opacity(0.75)))
             }
+        }
+    }
+
+    // MARK: - Stamp card
+    private var stampCardSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "seal.fill")
+                    .foregroundColor(brownAccent)
+                Text("来店スタンプカード")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(brownAccent)
+            }
+
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 10) {
+                    ForEach(0..<5, id: \.self) { index in
+                        Image(systemName: index < visibleStampCount ? "star.circle.fill" : "circle")
+                            .font(.system(size: 34))
+                            .foregroundColor(index < visibleStampCount ? leafGreen : .secondary.opacity(0.45))
+                    }
+                }
+                .frame(maxWidth: .infinity)
+
+                Text(service.stampConfig.rewardText)
+                    .font(.body.weight(.semibold))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                if stampCard.availableCouponCount > 0 {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("使えるクーポンがあります", systemImage: "ticket.fill")
+                            .font(.body.weight(.bold))
+                            .foregroundColor(leafGreen)
+                        Text("会計時にこの画面を店主に見せてください。")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Button {
+                            redeemCoupon()
+                        } label: {
+                            Label("クーポンを使用済みにする", systemImage: "checkmark.seal.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding(12)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(leafGreen.opacity(0.1)))
+                }
+
+                HStack(spacing: 8) {
+                    TextField("店頭のスタンプコード", text: $stampCodeInput)
+                        .textFieldStyle(.roundedBorder)
+                        .textInputAutocapitalization(.characters)
+                        .submitLabel(.done)
+                        .onSubmit(addStamp)
+
+                    Button(action: addStamp) {
+                        Label("押す", systemImage: "plus.circle.fill")
+                            .labelStyle(.iconOnly)
+                            .font(.title3)
+                    }
+                    .disabled(stampCodeInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+
+                if !stampResultMessage.isEmpty {
+                    Text(stampResultMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Text("来店時に店頭コードを入力すると、1日1回スタンプがたまります。")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: 12).fill(.white.opacity(0.78)))
         }
     }
 
@@ -360,6 +444,48 @@ struct CustomerView: View {
     private func saveShoppingMemo() {
         guard let data = try? JSONEncoder().encode(shoppingMemoItems) else { return }
         UserDefaults.standard.set(data, forKey: "shoppingMemoItems")
+    }
+
+    private var visibleStampCount: Int {
+        stampCard.availableCouponCount > 0 ? 5 : stampCard.currentStamps
+    }
+
+    private func loadStampCard() {
+        guard let data = UserDefaults.standard.data(forKey: "stampCard"),
+              let decoded = try? JSONDecoder().decode(StampCard.self, from: data) else { return }
+        stampCard = decoded
+    }
+
+    private func saveStampCard() {
+        guard let data = try? JSONEncoder().encode(stampCard) else { return }
+        UserDefaults.standard.set(data, forKey: "stampCard")
+    }
+
+    private func addStamp() {
+        guard service.isValidStampCode(stampCodeInput) else {
+            stampResultMessage = "コードが違います。店頭のコードを確認してください。"
+            return
+        }
+        let todayKey = BusinessCalendarKey.key(for: Date())
+        guard !stampCard.stampedDateKeys.contains(todayKey) else {
+            stampResultMessage = "今日のスタンプは取得済みです。"
+            stampCodeInput = ""
+            return
+        }
+
+        stampCard.stampedDateKeys.append(todayKey)
+        stampCodeInput = ""
+        if stampCard.currentStamps == 0 {
+            stampResultMessage = "スタンプが5個たまりました。クーポンを使えます。"
+        } else {
+            stampResultMessage = "スタンプを追加しました。"
+        }
+    }
+
+    private func redeemCoupon() {
+        guard stampCard.availableCouponCount > 0 else { return }
+        stampCard.redeemedCouponCount += 1
+        stampResultMessage = "クーポンを使用済みにしました。"
     }
 
     private func sendContactMessage() {

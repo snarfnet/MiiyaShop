@@ -19,6 +19,10 @@ struct AdminView: View {
     @State private var announcementBody = ""
     @State private var isSendingAnnouncement = false
     @State private var announcementResult = ""
+    @State private var stampCode = ""
+    @State private var stampRewardText = ""
+    @State private var isSavingStampConfig = false
+    @State private var stampConfigResult = ""
 
     private let brownAccent = Color(red: 0.55, green: 0.38, blue: 0.22)
 
@@ -74,6 +78,43 @@ struct AdminView: View {
                     )
 
                     Text("日付をタップすると、未設定、〇、✖の順に切り替わります。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Section("来店スタンプカード") {
+                    Text("現在のコード: \(service.stampConfig.code)")
+                        .font(.body.weight(.semibold))
+
+                    TextField("店頭で案内するコード", text: $stampCode)
+                        .textInputAutocapitalization(.characters)
+
+                    TextField("クーポン内容", text: $stampRewardText, axis: .vertical)
+                        .lineLimit(2)
+
+                    Button {
+                        saveStampConfig()
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if isSavingStampConfig {
+                                ProgressView()
+                            } else {
+                                Label("スタンプ設定を保存", systemImage: "seal")
+                                    .fontWeight(.semibold)
+                            }
+                            Spacer()
+                        }
+                    }
+                    .disabled(isSavingStampConfig)
+
+                    if !stampConfigResult.isEmpty {
+                        Text(stampConfigResult)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Text("お客さんは店頭コードを入力すると、1日1回スタンプを取得できます。5個でクーポン表示になります。")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -267,6 +308,8 @@ struct AdminView: View {
                 selectedStatus = service.shopInfo.status
                 message = service.shopInfo.message
                 allProducts = await service.fetchAllProducts()
+                stampCode = service.stampConfig.code
+                stampRewardText = service.stampConfig.rewardText
                 await service.enableContactMessageNotifications()
             }
         }
@@ -308,6 +351,25 @@ struct AdminView: View {
                 announcementResult = "送信しました。"
             } else {
                 announcementResult = "送信できませんでした。"
+            }
+        }
+    }
+
+    private func saveStampConfig() {
+        isSavingStampConfig = true
+        stampConfigResult = ""
+        let code = stampCode.isEmpty ? service.stampConfig.code : stampCode
+        let reward = stampRewardText.isEmpty ? service.stampConfig.rewardText : stampRewardText
+
+        Task {
+            let ok = await service.updateStampConfig(code: code, rewardText: reward)
+            isSavingStampConfig = false
+            if ok {
+                stampCode = code.uppercased()
+                stampRewardText = reward
+                stampConfigResult = "保存しました。"
+            } else {
+                stampConfigResult = "保存できませんでした。"
             }
         }
     }

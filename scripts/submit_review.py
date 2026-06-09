@@ -20,6 +20,7 @@ How to access the admin panel:
 3. Enter the password above.
 
 This build adds customer-facing features beyond store marketing:
+- Visit stamp card and coupon: customers can enter the in-store stamp code once per day to collect visit stamps. After 5 stamps, the app shows a coupon that customers can present at checkout. The store owner can manage the stamp code and coupon text from the admin panel.
 - Business calendar: customers can check open and closed days. The store owner can update each date from the admin panel by marking it as open (〇) or closed (✖).
 - Question form: customers can send questions to the store from the app. The store owner can read, mark, and delete received messages in the admin panel.
 - Store announcements: the store owner can send announcements from the admin panel. Customers can see these announcements in the app and receive local notifications when the app is active with notification permission.
