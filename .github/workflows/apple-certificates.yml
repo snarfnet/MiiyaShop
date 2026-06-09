@@ -1,0 +1,41 @@
+name: Apple Certificates
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Certificate action"
+        required: true
+        default: "list"
+        type: choice
+        options:
+          - list
+          - revoke_oldest_ios_development
+
+jobs:
+  certificates:
+    runs-on: macos-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install pyjwt cryptography requests
+
+      - name: Set up ASC API Key
+        env:
+          ASC_API_KEY_CONTENT: ${{ secrets.ASC_API_KEY_CONTENT }}
+        run: |
+          echo "$ASC_API_KEY_CONTENT" | base64 -D > /tmp/asc_key.p8
+
+      - name: Manage certificates
+        env:
+          ASC_P8_PATH: /tmp/asc_key.p8
+          MODE: ${{ inputs.mode }}
+        run: python scripts/apple_certificates.py
