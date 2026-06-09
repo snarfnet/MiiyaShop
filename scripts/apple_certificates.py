@@ -10,6 +10,7 @@ KEY_ID = os.environ.get("ASC_KEY_ID", "WDXGY9WX55")
 ISSUER_ID = os.environ.get("ASC_ISSUER_ID", "2be0734f-943a-4d61-9dc9-5d9045c46fec")
 P8_PATH = os.environ.get("ASC_P8_PATH", "/tmp/asc_key.p8")
 MODE = os.environ.get("MODE", "list")
+DEVELOPMENT_CERT_LIMIT = int(os.environ.get("DEVELOPMENT_CERT_LIMIT", "10"))
 
 
 with open(P8_PATH, encoding="utf-8") as key_file:
@@ -70,6 +71,9 @@ def main():
     ]
     if not development:
         print("No development certificates found.")
+        return
+    if len(development) < DEVELOPMENT_CERT_LIMIT:
+        print(f"Development certificate count is {len(development)}. No revoke needed.")
         return
 
     development.sort(key=lambda item: item.get("attributes", {}).get("expirationDate") or "")

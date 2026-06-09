@@ -50,6 +50,14 @@ jobs:
         echo "$ASC_API_KEY_CONTENT" | base64 -D > ~/.appstoreconnect/private_keys/AuthKey_WDXGY9WX55.p8
         cp ~/.appstoreconnect/private_keys/AuthKey_WDXGY9WX55.p8 /tmp/asc_key.p8
 
+    - name: Keep development certificate slot available
+      env:
+        ASC_P8_PATH: /tmp/asc_key.p8
+        MODE: revoke_oldest_ios_development
+      run: |
+        python3 -m pip install pyjwt cryptography requests
+        python3 scripts/apple_certificates.py
+
     - name: Build Archive
       run: |
         xcodebuild archive \
