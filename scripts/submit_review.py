@@ -256,6 +256,7 @@ def cancel_blocking_submissions(app_id):
             continue
         for submission in body.get("data", []):
             submission_id = submission["id"]
+            print(f"Found review submission {submission_id} state={submission.get('attributes', {}).get('state')}")
             response = api(
                 "PATCH",
                 f"/reviewSubmissions/{submission_id}",
@@ -268,6 +269,8 @@ def cancel_blocking_submissions(app_id):
                 },
             )
             print(f"Canceled review submission {submission_id}: {response.status_code}")
+            if response.status_code not in (200, 201, 204):
+                print(response.text[:1000])
     time.sleep(20)
 
 
