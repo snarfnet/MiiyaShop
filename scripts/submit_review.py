@@ -115,7 +115,33 @@ def find_version(app_id):
         if attrs.get("versionString") == APP_VERSION:
             print(f"Version {APP_VERSION}: {version['id']} state={attrs.get('appStoreState')}")
             return version["id"], attrs.get("appStoreState")
-    fail(f"App Store version {APP_VERSION} was not found.")
+    return create_version(app_id)
+
+
+def create_version(app_id):
+    response, body = api_json(
+        "POST",
+        "/appStoreVersions",
+        json={
+            "data": {
+                "type": "appStoreVersions",
+                "attributes": {
+                    "platform": "IOS",
+                    "versionString": APP_VERSION,
+                },
+                "relationships": {
+                    "app": {"data": {"type": "apps", "id": app_id}}
+                },
+            }
+        },
+    )
+    print(f"Create version {APP_VERSION}: {response.status_code}")
+    if response.status_code != 201:
+        fail(response.text[:1000])
+    version = body["data"]
+    attrs = version.get("attributes", {})
+    print(f"Version {APP_VERSION}: {version['id']} state={attrs.get('appStoreState')}")
+    return version["id"], attrs.get("appStoreState")
 
 
 def wait_for_latest_valid_build(app_id):
