@@ -110,7 +110,7 @@ struct AdminView: View {
                         onTapDate: toggleBusinessDay
                     )
 
-                    Text("日付をタップすると、未設定、〇、✖の順に切り替わります。")
+                    Text("日付をタップすると、〇と✖が切り替わります。")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -393,7 +393,7 @@ struct AdminView: View {
         case .some(.open):
             nextStatus = .closed
         case .some(.closed):
-            nextStatus = nil
+            nextStatus = .open
         }
 
         Task {
@@ -490,6 +490,7 @@ struct ProductEditorView: View {
     @State private var imageData: Data?
     @State private var previewImage: UIImage?
     @State private var isSaving = false
+    @State private var saveError = ""
 
     var body: some View {
         NavigationStack {
@@ -521,6 +522,12 @@ struct ProductEditorView: View {
                     PhotosPicker(selection: $selectedPhoto, matching: .images) {
                         Label("写真を選択", systemImage: "photo.on.rectangle")
                     }
+
+                    if !saveError.isEmpty {
+                        Text(saveError)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
                 }
             }
             .navigationTitle(product == nil ? "商品追加" : "商品編集")
@@ -539,14 +546,15 @@ struct ProductEditorView: View {
                             Text("保存").fontWeight(.semibold)
                         }
                     }
-                    .disabled(name.isEmpty || isSaving)
+                    .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
                 }
             }
             .onChange(of: selectedPhoto) { newItem in
                 Task {
                     if let data = try? await newItem?.loadTransferable(type: Data.self) {
                         imageData = data
-                        previewImage = UIImage(data: data)
+                        previewImage = UIImage(data: data)?.resizedForProduct(maxDimension: 900)
+                        saveError = ""
                     }
                 }
             }
@@ -563,16 +571,22 @@ struct ProductEditorView: View {
 
     private func save() {
         isSaving = true
+        saveError = ""
         var p = product ?? Product()
-        p.name = name
+        p.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         p.price = Int(price) ?? 0
-        p.description = description
+        p.description = description.trimmingCharacters(in: .whitespacesAndNewlines)
         p.isVisible = isVisible
         if product == nil { p.order = nextOrder }
 
         var compressed: Data?
-        if let imageData, let img = UIImage(data: imageData) {
-            compressed = img.jpegData(compressionQuality: 0.7)
+        if let imageData {
+            compressed = compressedProductImageData(from: imageData)
+            if compressed == nil {
+                saveError = "写真を読み込めませんでした。別の写真を選んでください。"
+                isSaving = false
+                return
+            }
         }
 
         Task {
@@ -580,8 +594,48 @@ struct ProductEditorView: View {
             if ok {
                 onSave()
                 dismiss()
+            } else {
+                saveError = "保存できませんでした。写真を変更するか、少し時間を置いてもう一度お試しください。"
             }
             isSaving = false
+        }
+    }
+
+    private func compressedProductImageData(from data: Data) -> Data? {
+        guard let image = UIImage(data: data) else { return nil }
+        let maxBytes = 650 * 1024
+        var maxDimension: CGFloat = 1200
+
+        for _ in 0..<4 {
+            let resized = image.resizedForProduct(maxDimension: maxDimension)
+            var quality: CGFloat = 0.74
+
+            while quality >= 0.34 {
+                if let jpeg = resized.jpegData(compressionQuality: quality), jpeg.count <= maxBytes {
+                    return jpeg
+                }
+                quality -= 0.1
+            }
+
+            maxDimension *= 0.75
+        }
+
+        return image.resizedForProduct(maxDimension: 600).jpegData(compressionQuality: 0.32)
+    }
+}
+
+private extension UIImage {
+    func resizedForProduct(maxDimension: CGFloat) -> UIImage {
+        let longestSide = max(size.width, size.height)
+        guard longestSide > maxDimension else { return self }
+
+        let scale = maxDimension / longestSide
+        let newSize = CGSize(width: size.width * scale, height: size.height * scale)
+        let format = UIGraphicsImageRendererFormat.default()
+        format.scale = 1
+
+        return UIGraphicsImageRenderer(size: newSize, format: format).image { _ in
+            draw(in: CGRect(origin: .zero, size: newSize))
         }
     }
 }
