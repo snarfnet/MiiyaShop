@@ -24,14 +24,16 @@ How to access the admin panel:
 
 This build adds customer-facing features beyond store marketing:
 - Visit stamp card and coupon: customers can enter the in-store stamp code once per day to collect visit stamps. After 5 stamps, the app shows a coupon that customers can present at checkout. The store owner can manage the stamp code and coupon text from the admin panel.
-- Feature visibility controls: the store owner can show or hide announcements, the stamp card, the shopping memo, and the business calendar from the admin panel.
+- Feature visibility controls: the store owner can show or hide the customer question form, stamp card, shopping memo, and business calendar from the admin panel.
 - Break status: the store owner can set the shop status to open, break, or closed. Each status has its own main image.
+- Top page notice: the store owner can edit a separate notice that appears on the customer-facing top page.
 - Business calendar: customers can check open and closed days. The store owner can update each date from the admin panel by marking it as open (〇) or closed (✖).
 - Question form: customers can send questions to the store from the app. The store owner can read, mark, and delete received messages in the admin panel.
-- Store announcements: the store owner can send announcements from the admin panel. Customers can see these announcements in the app and receive local notifications when the app is active with notification permission.
+- Store announcements: the store owner can send announcements from the admin panel. Customers receive local notifications when the app is active with notification permission.
 - Shopping memo: customers can create a personal shopping memo and add recommended products to it."""
 
-WHATS_NEW = """管理画面から一斉お知らせ、来店スタンプカード、買い物メモ、営業カレンダーの表示を切り替えられるようにしました。
+WHATS_NEW = """管理画面から質問フォーム、来店スタンプカード、買い物メモ、営業カレンダーの表示を切り替えられるようにしました。
+TOPページのお知らせを一斉送信とは別で編集できるようにしました。
 営業ステータスに休憩中を追加しました。
 管理画面パスワードを端末に保存し、次回から入力を省略できるようにしました。"""
 

@@ -30,6 +30,11 @@ struct ShopInfo {
     var updatedAt: Date = Date()
 }
 
+struct TopNotice {
+    var message: String = ""
+    var updatedAt: Date = Date()
+}
+
 enum BusinessDayStatus: String, CaseIterable {
     case open = "open"
     case closed = "closed"
@@ -112,6 +117,7 @@ struct FeatureVisibility {
     var showStampCard: Bool = true
     var showShoppingMemo: Bool = true
     var showBusinessCalendar: Bool = true
+    var showContactForm: Bool = true
 }
 
 struct StampConfig {

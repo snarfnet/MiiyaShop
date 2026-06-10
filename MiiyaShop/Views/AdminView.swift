@@ -6,7 +6,9 @@ struct AdminView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedStatus: ShopStatus = .closed
-    @State private var message = ""
+    @State private var topNoticeMessage = ""
+    @State private var topNoticeResult = ""
+    @State private var isSavingTopNotice = false
     @State private var allProducts: [Product] = []
     @State private var showProductEditor = false
     @State private var editingProduct: Product?
@@ -30,7 +32,7 @@ struct AdminView: View {
         NavigationStack {
             List {
                 Section("表示設定") {
-                    featureToggle("一斉お知らせ", systemImage: "bell.badge", keyPath: \.showAnnouncements)
+                    featureToggle("お店に質問する", systemImage: "bubble.left.and.bubble.right", keyPath: \.showContactForm)
                     featureToggle("来店スタンプカード", systemImage: "seal", keyPath: \.showStampCard)
                     featureToggle("買い物メモ", systemImage: "checklist", keyPath: \.showShoppingMemo)
                     featureToggle("営業カレンダー", systemImage: "calendar", keyPath: \.showBusinessCalendar)
@@ -57,9 +59,6 @@ struct AdminView: View {
                         }
                     }
 
-                    TextField("お知らせメッセージ（任意）", text: $message, axis: .vertical)
-                        .lineLimit(3)
-
                     Button {
                         saveStatus()
                     } label: {
@@ -75,6 +74,33 @@ struct AdminView: View {
                         }
                     }
                     .disabled(isSaving)
+                }
+
+                Section("TOPページのお知らせ") {
+                    TextField("TOPに表示するお知らせ", text: $topNoticeMessage, axis: .vertical)
+                        .lineLimit(2...5)
+
+                    Button {
+                        saveTopNotice()
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if isSavingTopNotice {
+                                ProgressView()
+                            } else {
+                                Label("保存", systemImage: "megaphone")
+                                    .fontWeight(.semibold)
+                            }
+                            Spacer()
+                        }
+                    }
+                    .disabled(isSavingTopNotice)
+
+                    if !topNoticeResult.isEmpty {
+                        Text(topNoticeResult)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
 
                 Section("営業カレンダー") {
@@ -265,13 +291,11 @@ struct AdminView: View {
                     }
                     .onDelete(perform: deleteProducts)
 
-                    if allProducts.count < 5 {
-                        Button {
-                            editingProduct = nil
-                            showProductEditor = true
-                        } label: {
-                            Label("商品を追加", systemImage: "plus")
-                        }
+                    Button {
+                        editingProduct = nil
+                        showProductEditor = true
+                    } label: {
+                        Label("商品を追加", systemImage: "plus")
                     }
                 }
 
@@ -313,7 +337,7 @@ struct AdminView: View {
             }
             .task {
                 selectedStatus = service.shopInfo.status
-                message = service.shopInfo.message
+                topNoticeMessage = service.topNotice.message
                 allProducts = await service.fetchAllProducts()
                 stampCode = service.stampConfig.code
                 stampRewardText = service.stampConfig.rewardText
@@ -325,8 +349,18 @@ struct AdminView: View {
     private func saveStatus() {
         isSaving = true
         Task {
-            await service.updateStatus(selectedStatus, message: message)
+            await service.updateStatus(selectedStatus, message: "")
             isSaving = false
+        }
+    }
+
+    private func saveTopNotice() {
+        isSavingTopNotice = true
+        topNoticeResult = ""
+        Task {
+            let ok = await service.updateTopNotice(topNoticeMessage)
+            isSavingTopNotice = false
+            topNoticeResult = ok ? "保存しました。" : "保存できませんでした。"
         }
     }
 

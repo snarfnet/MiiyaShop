@@ -32,12 +32,8 @@ struct CustomerView: View {
                         mascotHeader
 
                         // Message
-                        if !service.shopInfo.message.isEmpty {
+                        if !service.topNotice.message.isEmpty {
                             messageSection
-                        }
-
-                        if service.featureVisibility.showAnnouncements && !service.announcements.isEmpty {
-                            announcementsSection
                         }
 
                         if service.featureVisibility.showStampCard {
@@ -52,7 +48,9 @@ struct CustomerView: View {
                             shoppingMemoSection
                         }
 
-                        contactSection
+                        if service.featureVisibility.showContactForm {
+                            contactSection
+                        }
 
                         // Products
                         if !service.products.isEmpty {
@@ -133,7 +131,7 @@ struct CustomerView: View {
         HStack {
             Image(systemName: "megaphone.fill")
                 .foregroundColor(leafGreen)
-            Text(service.shopInfo.message)
+            Text(service.topNotice.message)
                 .font(.body)
                 .foregroundColor(.primary)
         }
@@ -161,32 +159,6 @@ struct CustomerView: View {
             }
 
             BusinessCalendarView(days: service.businessDays)
-        }
-    }
-
-    // MARK: - Announcements
-    private var announcementsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "bell.fill")
-                    .foregroundColor(brownAccent)
-                Text("お店からのお知らせ")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(brownAccent)
-            }
-
-            ForEach(service.announcements.prefix(3)) { announcement in
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(announcement.title)
-                        .font(.body.weight(.bold))
-                    Text(announcement.body)
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(14)
-                .background(RoundedRectangle(cornerRadius: 12).fill(.white.opacity(0.75)))
-            }
         }
     }
 

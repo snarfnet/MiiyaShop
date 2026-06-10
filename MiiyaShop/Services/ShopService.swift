@@ -6,6 +6,7 @@ import UserNotifications
 @MainActor
 class ShopService: ObservableObject {
     @Published var shopInfo = ShopInfo()
+    @Published var topNotice = TopNotice()
     @Published var products: [Product] = []
     @Published var businessDays: [String: BusinessDayStatus] = [:]
     @Published var contactMessages: [ContactMessage] = []
@@ -16,6 +17,7 @@ class ShopService: ObservableObject {
 
     private let db = Firestore.firestore()
     private var statusListener: ListenerRegistration?
+    private var topNoticeListener: ListenerRegistration?
     private var productsListener: ListenerRegistration?
     private var calendarListener: ListenerRegistration?
     private var contactMessagesListener: ListenerRegistration?
@@ -33,6 +35,7 @@ class ShopService: ObservableObject {
 
     init() {
         listenToStatus()
+        listenToTopNotice()
         listenToProducts()
         listenToCalendar()
         listenToContactMessages()
@@ -43,6 +46,7 @@ class ShopService: ObservableObject {
 
     deinit {
         statusListener?.remove()
+        topNoticeListener?.remove()
         productsListener?.remove()
         calendarListener?.remove()
         contactMessagesListener?.remove()
@@ -63,6 +67,18 @@ class ShopService: ObservableObject {
                     self.shopInfo.updatedAt = ts.dateValue()
                 }
                 self.isLoading = false
+            }
+    }
+
+    private func listenToTopNotice() {
+        topNoticeListener = db.collection("config").document("topNotice")
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self else { return }
+                let data = snapshot?.data() ?? [:]
+                self.topNotice.message = data["message"] as? String ?? ""
+                if let ts = data["updatedAt"] as? Timestamp {
+                    self.topNotice.updatedAt = ts.dateValue()
+                }
             }
     }
 
@@ -178,7 +194,8 @@ class ShopService: ObservableObject {
                     showAnnouncements: data["showAnnouncements"] as? Bool ?? true,
                     showStampCard: data["showStampCard"] as? Bool ?? true,
                     showShoppingMemo: data["showShoppingMemo"] as? Bool ?? true,
-                    showBusinessCalendar: data["showBusinessCalendar"] as? Bool ?? true
+                    showBusinessCalendar: data["showBusinessCalendar"] as? Bool ?? true,
+                    showContactForm: data["showContactForm"] as? Bool ?? true
                 )
             }
     }
@@ -194,6 +211,19 @@ class ShopService: ObservableObject {
             ])
         } catch {
             print("Status update error: \(error)")
+        }
+    }
+
+    func updateTopNotice(_ message: String) async -> Bool {
+        do {
+            try await db.collection("config").document("topNotice").setData([
+                "message": message.trimmingCharacters(in: .whitespacesAndNewlines),
+                "updatedAt": FieldValue.serverTimestamp()
+            ], merge: true)
+            return true
+        } catch {
+            print("Top notice update error: \(error)")
+            return false
         }
     }
 
@@ -324,6 +354,7 @@ class ShopService: ObservableObject {
                 "showStampCard": visibility.showStampCard,
                 "showShoppingMemo": visibility.showShoppingMemo,
                 "showBusinessCalendar": visibility.showBusinessCalendar,
+                "showContactForm": visibility.showContactForm,
                 "updatedAt": FieldValue.serverTimestamp()
             ], merge: true)
             return true
@@ -471,6 +502,13 @@ class ShopService: ObservableObject {
                 "updatedAt": FieldValue.serverTimestamp()
             ])
         }
+        let topNoticeDoc = try? await db.collection("config").document("topNotice").getDocument()
+        if topNoticeDoc?.exists != true {
+            try? await db.collection("config").document("topNotice").setData([
+                "message": "",
+                "updatedAt": FieldValue.serverTimestamp()
+            ])
+        }
         let adminDoc = try? await db.collection("config").document("admin").getDocument()
         if adminDoc?.exists != true {
             try? await db.collection("config").document("admin").setData([
@@ -499,6 +537,7 @@ class ShopService: ObservableObject {
                 "showStampCard": true,
                 "showShoppingMemo": true,
                 "showBusinessCalendar": true,
+                "showContactForm": true,
                 "updatedAt": FieldValue.serverTimestamp()
             ])
         }
