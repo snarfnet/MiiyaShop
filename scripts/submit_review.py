@@ -9,7 +9,7 @@ import requests
 KEY_ID = os.environ.get("ASC_KEY_ID", "WDXGY9WX55")
 ISSUER_ID = os.environ.get("ASC_ISSUER_ID", "2be0734f-943a-4d61-9dc9-5d9045c46fec")
 BUNDLE_ID = os.environ.get("APP_BUNDLE_ID", "com.tokyonasu.miiyaShop")
-APP_VERSION = os.environ.get("APP_VERSION", "1.3")
+APP_VERSION = os.environ.get("APP_VERSION", "1.4")
 APP_STORE_NAME = os.environ.get("APP_STORE_NAME", "雑貨屋みぃ～屋。")
 P8_PATH = os.environ.get("ASC_P8_PATH", "/tmp/asc_key.p8")
 EXPECTED_BUILD_NUMBER = os.environ.get("EXPECTED_BUILD_NUMBER", "").strip()
@@ -408,8 +408,8 @@ def find_reusable_review_submission(app_id):
 
 def main():
     app_id = find_app_id()
-    update_app_store_name(app_id)
     version_id, state = find_version(app_id)
+    update_app_store_name(app_id)
     if state in ("WAITING_FOR_REVIEW", "IN_REVIEW") and not FORCE_RESUBMIT:
         print(f"Already submitted: {state}")
         return
