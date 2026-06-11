@@ -38,7 +38,7 @@ targets:
     info:
       path: MiiyaShop/Resources/Info.plist
       properties:
-        CFBundleDisplayName: "雑貨屋みぃ～屋"
+        CFBundleDisplayName: "雑貨屋みぃ～屋。"
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         LSRequiresIPhoneOS: true

@@ -102,7 +102,7 @@ struct CustomerView: View {
                     openAdminLogin()
                 }
 
-            Text("雑貨屋みぃ～屋")
+            Text("雑貨屋みぃ～屋。")
                 .font(.system(size: 26, weight: .bold))
                 .foregroundColor(brownAccent)
         }

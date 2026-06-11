@@ -110,7 +110,7 @@ struct AdminView: View {
                         onTapDate: toggleBusinessDay
                     )
 
-                    Text("日付をタップすると、〇と✖が切り替わります。")
+                    Text("日付をタップすると、未設定、〇、✖の順に切り替わります。")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -393,7 +393,7 @@ struct AdminView: View {
         case .some(.open):
             nextStatus = .closed
         case .some(.closed):
-            nextStatus = .open
+            nextStatus = nil
         }
 
         Task {
