@@ -7,16 +7,7 @@ struct ProductCardView: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            // Product image from base64
-            if let img = product.uiImage {
-                Image(uiImage: img)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 90, height: 90)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-            } else {
-                imagePlaceholder
-            }
+            productImages
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(product.name)
@@ -64,5 +55,41 @@ struct ProductCardView: View {
                     .foregroundColor(.gray.opacity(0.4))
                     .font(.title2)
             )
+    }
+
+    @ViewBuilder
+    private var productImages: some View {
+        let images = product.uiImages
+        if images.isEmpty {
+            imagePlaceholder
+        } else if images.count == 1, let image = images.first {
+            productImage(image)
+        } else {
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.fixed(46), spacing: 4), count: 2),
+                spacing: 4
+            ) {
+                ForEach(images.prefix(4).indices, id: \.self) { index in
+                    productThumbnail(images[index])
+                }
+            }
+            .frame(width: 96, height: 96)
+        }
+    }
+
+    private func productImage(_ image: UIImage) -> some View {
+        Image(uiImage: image)
+            .resizable()
+            .scaledToFill()
+            .frame(width: 96, height: 96)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private func productThumbnail(_ image: UIImage) -> some View {
+        Image(uiImage: image)
+            .resizable()
+            .scaledToFill()
+            .frame(width: 46, height: 46)
+            .clipShape(RoundedRectangle(cornerRadius: 7))
     }
 }

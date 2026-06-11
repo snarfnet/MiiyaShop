@@ -96,6 +96,7 @@ class ShopService: ObservableObject {
                         price: d["price"] as? Int ?? 0,
                         description: d["description"] as? String ?? "",
                         imageBase64: d["imageBase64"] as? String ?? "",
+                        imageBase64List: d["imageBase64List"] as? [String] ?? [],
                         order: d["order"] as? Int ?? 0,
                         isVisible: d["isVisible"] as? Bool ?? true
                     )
@@ -243,7 +244,7 @@ class ShopService: ObservableObject {
             try await db.collection("config").document("businessCalendar").setData([
                 "days": rawDays,
                 "updatedAt": FieldValue.serverTimestamp()
-            ], merge: true)
+            ])
         } catch {
             print("Calendar update error: \(error)")
         }
@@ -423,6 +424,7 @@ class ShopService: ObservableObject {
                     price: d["price"] as? Int ?? 0,
                     description: d["description"] as? String ?? "",
                     imageBase64: d["imageBase64"] as? String ?? "",
+                    imageBase64List: d["imageBase64List"] as? [String] ?? [],
                     order: d["order"] as? Int ?? 0,
                     isVisible: d["isVisible"] as? Bool ?? true
                 )
@@ -432,7 +434,7 @@ class ShopService: ObservableObject {
         }
     }
 
-    func saveProduct(_ product: Product, imageData: Data?) async -> Bool {
+    func saveProduct(_ product: Product, imageDataList: [Data]?) async -> Bool {
         do {
             var data: [String: Any] = [
                 "name": product.name,
@@ -442,10 +444,14 @@ class ShopService: ObservableObject {
                 "isVisible": product.isVisible
             ]
 
-            if let imageData {
-                data["imageBase64"] = imageData.base64EncodedString()
+            if let imageDataList {
+                let encodedImages = imageDataList.map { $0.base64EncodedString() }
+                data["imageBase64"] = encodedImages.first ?? ""
+                data["imageBase64List"] = encodedImages
             } else {
-                data["imageBase64"] = product.imageBase64
+                let existingImages = product.imageBase64Values
+                data["imageBase64"] = existingImages.first ?? ""
+                data["imageBase64List"] = existingImages
             }
 
             if product.id.isEmpty {

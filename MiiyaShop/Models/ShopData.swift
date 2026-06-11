@@ -74,6 +74,7 @@ struct Product: Identifiable {
     var price: Int = 0
     var description: String = ""
     var imageBase64: String = ""
+    var imageBase64List: [String] = []
     var order: Int = 0
     var isVisible: Bool = true
 
@@ -82,9 +83,23 @@ struct Product: Identifiable {
     }
 
     var uiImage: UIImage? {
-        guard !imageBase64.isEmpty,
-              let data = Data(base64Encoded: imageBase64) else { return nil }
+        guard let firstImageBase64 = imageBase64Values.first,
+              !firstImageBase64.isEmpty,
+              let data = Data(base64Encoded: firstImageBase64) else { return nil }
         return UIImage(data: data)
+    }
+
+    var uiImages: [UIImage] {
+        imageBase64Values.compactMap { value in
+            guard let data = Data(base64Encoded: value) else { return nil }
+            return UIImage(data: data)
+        }
+    }
+
+    var imageBase64Values: [String] {
+        let list = imageBase64List.filter { !$0.isEmpty }
+        if !list.isEmpty { return list }
+        return imageBase64.isEmpty ? [] : [imageBase64]
     }
 }
 

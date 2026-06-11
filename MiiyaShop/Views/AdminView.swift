@@ -486,9 +486,9 @@ struct ProductEditorView: View {
     @State private var price = ""
     @State private var description = ""
     @State private var isVisible = true
-    @State private var selectedPhoto: PhotosPickerItem?
-    @State private var imageData: Data?
-    @State private var previewImage: UIImage?
+    @State private var selectedPhotos: [PhotosPickerItem] = []
+    @State private var imageDataList: [Data] = []
+    @State private var previewImages: [UIImage] = []
     @State private var isSaving = false
     @State private var saveError = ""
 
@@ -505,22 +505,24 @@ struct ProductEditorView: View {
                 }
 
                 Section("写真") {
-                    if let previewImage {
-                        Image(uiImage: previewImage)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxHeight: 200)
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                    } else if let img = product?.uiImage {
-                        Image(uiImage: img)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxHeight: 200)
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    let images = previewImages.isEmpty ? (product?.uiImages ?? []) : previewImages
+                    if !images.isEmpty {
+                        LazyVGrid(
+                            columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3),
+                            spacing: 8
+                        ) {
+                            ForEach(images.indices, id: \.self) { index in
+                                Image(uiImage: images[index])
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(height: 88)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                            }
+                        }
                     }
 
-                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                        Label("写真を選択", systemImage: "photo.on.rectangle")
+                    PhotosPicker(selection: $selectedPhotos, maxSelectionCount: 3, matching: .images) {
+                        Label("写真を選択（最大3枚）", systemImage: "photo.on.rectangle")
                     }
 
                     if !saveError.isEmpty {
@@ -549,13 +551,22 @@ struct ProductEditorView: View {
                     .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
                 }
             }
-            .onChange(of: selectedPhoto) { newItem in
+            .onChange(of: selectedPhotos) { newItems in
                 Task {
-                    if let data = try? await newItem?.loadTransferable(type: Data.self) {
-                        imageData = data
-                        previewImage = UIImage(data: data)?.resizedForProduct(maxDimension: 900)
-                        saveError = ""
+                    var loadedData: [Data] = []
+                    var loadedImages: [UIImage] = []
+
+                    for item in newItems.prefix(3) {
+                        if let data = try? await item.loadTransferable(type: Data.self),
+                           let image = UIImage(data: data) {
+                            loadedData.append(data)
+                            loadedImages.append(image.resizedForProduct(maxDimension: 700))
+                        }
                     }
+
+                    imageDataList = loadedData
+                    previewImages = loadedImages
+                    saveError = ""
                 }
             }
             .onAppear {
@@ -579,10 +590,10 @@ struct ProductEditorView: View {
         p.isVisible = isVisible
         if product == nil { p.order = nextOrder }
 
-        var compressed: Data?
-        if let imageData {
-            compressed = compressedProductImageData(from: imageData)
-            if compressed == nil {
+        var compressedImages: [Data]?
+        if !imageDataList.isEmpty {
+            compressedImages = imageDataList.compactMap { compressedProductImageData(from: $0) }
+            if compressedImages?.count != imageDataList.count {
                 saveError = "写真を読み込めませんでした。別の写真を選んでください。"
                 isSaving = false
                 return
@@ -590,7 +601,7 @@ struct ProductEditorView: View {
         }
 
         Task {
-            let ok = await service.saveProduct(p, imageData: compressed)
+            let ok = await service.saveProduct(p, imageDataList: compressedImages)
             if ok {
                 onSave()
                 dismiss()
@@ -603,8 +614,8 @@ struct ProductEditorView: View {
 
     private func compressedProductImageData(from data: Data) -> Data? {
         guard let image = UIImage(data: data) else { return nil }
-        let maxBytes = 650 * 1024
-        var maxDimension: CGFloat = 1200
+        let maxBytes = 220 * 1024
+        var maxDimension: CGFloat = 900
 
         for _ in 0..<4 {
             let resized = image.resizedForProduct(maxDimension: maxDimension)
@@ -620,7 +631,11 @@ struct ProductEditorView: View {
             maxDimension *= 0.75
         }
 
-        return image.resizedForProduct(maxDimension: 600).jpegData(compressionQuality: 0.32)
+        guard let fallback = image.resizedForProduct(maxDimension: 440).jpegData(compressionQuality: 0.24),
+              fallback.count <= maxBytes else {
+            return nil
+        }
+        return fallback
     }
 }
 
