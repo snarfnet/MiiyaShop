@@ -10,6 +10,7 @@ KEY_ID = os.environ.get("ASC_KEY_ID", "WDXGY9WX55")
 ISSUER_ID = os.environ.get("ASC_ISSUER_ID", "2be0734f-943a-4d61-9dc9-5d9045c46fec")
 BUNDLE_ID = os.environ.get("APP_BUNDLE_ID", "com.tokyonasu.miiyaShop")
 APP_VERSION = os.environ.get("APP_VERSION", "1.2")
+APP_STORE_NAME = os.environ.get("APP_STORE_NAME", "雑貨屋みぃ～屋。")
 P8_PATH = os.environ.get("ASC_P8_PATH", "/tmp/asc_key.p8")
 EXPECTED_BUILD_NUMBER = os.environ.get("EXPECTED_BUILD_NUMBER", "").strip()
 FORCE_RESUBMIT = os.environ.get("FORCE_RESUBMIT", "").lower() in ("1", "true", "yes")
@@ -148,6 +149,38 @@ def create_version(app_id):
     attrs = version.get("attributes", {})
     print(f"Version {APP_VERSION}: {version['id']} state={attrs.get('appStoreState')}")
     return version["id"], attrs.get("appStoreState")
+
+
+def update_app_store_name(app_id):
+    try:
+        app_infos = list_all(f"/apps/{app_id}/appInfos?limit=200")
+        if not app_infos:
+            print("No app info found. App Store name was not updated.")
+            return
+
+        localizations = list_all(f"/appInfos/{app_infos[0]['id']}/appInfoLocalizations?limit=200")
+        if not localizations:
+            print("No app info localizations found. App Store name was not updated.")
+            return
+
+        for localization in localizations:
+            localization_id = localization["id"]
+            response = api(
+                "PATCH",
+                f"/appInfoLocalizations/{localization_id}",
+                json={
+                    "data": {
+                        "type": "appInfoLocalizations",
+                        "id": localization_id,
+                        "attributes": {"name": APP_STORE_NAME},
+                    }
+                },
+            )
+            print(f"App Store name update {localization_id}: {response.status_code}")
+            if response.status_code not in (200, 201):
+                print(response.text[:1000])
+    except Exception as error:
+        print(f"App Store name update skipped: {error}")
 
 
 def wait_for_latest_valid_build(app_id):
@@ -375,6 +408,7 @@ def find_reusable_review_submission(app_id):
 
 def main():
     app_id = find_app_id()
+    update_app_store_name(app_id)
     version_id, state = find_version(app_id)
     if state in ("WAITING_FOR_REVIEW", "IN_REVIEW") and not FORCE_RESUBMIT:
         print(f"Already submitted: {state}")
