@@ -9,7 +9,7 @@ import requests
 KEY_ID = os.environ.get("ASC_KEY_ID", "WDXGY9WX55")
 ISSUER_ID = os.environ.get("ASC_ISSUER_ID", "2be0734f-943a-4d61-9dc9-5d9045c46fec")
 BUNDLE_ID = os.environ.get("APP_BUNDLE_ID", "com.tokyonasu.miiyaShop")
-APP_VERSION = os.environ.get("APP_VERSION", "1.4")
+APP_VERSION = os.environ.get("APP_VERSION", "1.5")
 APP_STORE_NAME = os.environ.get("APP_STORE_NAME", "雑貨屋みぃ～屋。")
 P8_PATH = os.environ.get("ASC_P8_PATH", "/tmp/asc_key.p8")
 EXPECTED_BUILD_NUMBER = os.environ.get("EXPECTED_BUILD_NUMBER", "").strip()
@@ -33,10 +33,9 @@ This build adds customer-facing features beyond store marketing:
 - Store announcements: the store owner can send announcements from the admin panel. Customers receive local notifications when the app is active with notification permission.
 - Shopping memo: customers can create a personal shopping memo and add recommended products to it."""
 
-WHATS_NEW = """管理画面から質問フォーム、来店スタンプカード、買い物メモ、営業カレンダーの表示を切り替えられるようにしました。
-TOPページのお知らせを一斉送信とは別で編集できるようにしました。
-営業ステータスに休憩中を追加しました。
-管理画面パスワードを端末に保存し、次回から入力を省略できるようにしました。"""
+WHATS_NEW = """表示まわりを調整し、より使いやすくしました。
+カレンダーの表示を見直しました。
+商品写真を複数枚表示できるようにしました。"""
 
 REVIEW_CONTACT = {
     "contactFirstName": "Tokyo",
